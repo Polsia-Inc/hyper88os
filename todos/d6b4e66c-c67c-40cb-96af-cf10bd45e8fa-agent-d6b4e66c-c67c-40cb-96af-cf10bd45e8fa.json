@@ -1,0 +1,32 @@
+[
+  {
+    "content": "Improve health check endpoint with DB connectivity test",
+    "status": "completed",
+    "activeForm": "Improving health check endpoint with DB connectivity test"
+  },
+  {
+    "content": "Update render.yaml to run migrations on deploy",
+    "status": "completed",
+    "activeForm": "Updating render.yaml to run migrations on deploy"
+  },
+  {
+    "content": "Add comprehensive monitoring and error logging",
+    "status": "completed",
+    "activeForm": "Adding comprehensive monitoring and error logging"
+  },
+  {
+    "content": "Document custom domain setup process",
+    "status": "completed",
+    "activeForm": "Documenting custom domain setup process"
+  },
+  {
+    "content": "Verify all environment variables and configurations",
+    "status": "completed",
+    "activeForm": "Verifying all environment variables and configurations"
+  },
+  {
+    "content": "Push changes and verify deployment",
+    "status": "in_progress",
+    "activeForm": "Pushing changes and verifying deployment"
+  }
+]
