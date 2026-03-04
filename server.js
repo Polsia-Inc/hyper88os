@@ -955,6 +955,92 @@ app.post('/api/tasks/:id/logs', requireAuth, async (req, res) => {
   }
 });
 
+// ====== AGENTS API ======
+
+const agents = require('./lib/agents');
+
+// List all agents with stats
+app.get('/api/agents', requireAuth, async (req, res) => {
+  try {
+    const agentsWithStats = await agents.getAllAgentsWithStats();
+    res.json({ agents: agentsWithStats });
+  } catch (err) {
+    console.error('List agents error:', err.message);
+    res.status(500).json({ error: 'Error al cargar agentes' });
+  }
+});
+
+// Get agent details
+app.get('/api/agents/:id', requireAuth, async (req, res) => {
+  try {
+    const agentResult = await pool.query('SELECT * FROM agents WHERE id = $1', [req.params.id]);
+    if (agentResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Agente no encontrado' });
+    }
+
+    const agent = agentResult.rows[0];
+    const stats = await agents.getAgentStats(agent.id);
+    const history = await agents.getAgentExecutionHistory(agent.id, 50);
+
+    res.json({
+      agent,
+      stats,
+      history
+    });
+  } catch (err) {
+    console.error('Get agent error:', err.message);
+    res.status(500).json({ error: 'Error al cargar agente' });
+  }
+});
+
+// Get agent capabilities
+app.get('/api/agents/:id/capabilities', requireAuth, async (req, res) => {
+  try {
+    const agentResult = await pool.query(
+      'SELECT name, type, capabilities, mcp_requirements FROM agents WHERE id = $1',
+      [req.params.id]
+    );
+
+    if (agentResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Agente no encontrado' });
+    }
+
+    const agent = agentResult.rows[0];
+    res.json({
+      name: agent.name,
+      type: agent.type,
+      capabilities: agent.capabilities,
+      mcp_requirements: agent.mcp_requirements
+    });
+  } catch (err) {
+    console.error('Get capabilities error:', err.message);
+    res.status(500).json({ error: 'Error al cargar capacidades' });
+  }
+});
+
+// Find best agent for a task
+app.post('/api/agents/find-best', requireAuth, async (req, res) => {
+  try {
+    const { tag, title, description, complexity } = req.body;
+
+    if (!title) {
+      return res.status(400).json({ error: 'Título requerido' });
+    }
+
+    const task = { tag, title, description, complexity };
+    const bestAgent = await agents.findBestAgent(task);
+
+    if (!bestAgent) {
+      return res.status(404).json({ error: 'No se encontró un agente disponible' });
+    }
+
+    res.json({ agent: bestAgent });
+  } catch (err) {
+    console.error('Find best agent error:', err.message);
+    res.status(500).json({ error: 'Error al buscar agente' });
+  }
+});
+
 // ====== DASHBOARD STATS ======
 
 async function getTaskCounts(userId) {
@@ -1068,6 +1154,11 @@ app.get('/precios', (req, res) => {
 // Tasks page (protected)
 app.get('/tareas', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'tasks.html'));
+});
+
+// Agents page (protected)
+app.get('/agentes', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'agents.html'));
 });
 
 // Billing page (protected)
