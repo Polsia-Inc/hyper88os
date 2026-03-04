@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memoria — Polsia ES</title>
+    <script src="/theme.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #111118;
+            --bg-card: #16161f;
+            --border: #1e1e2a;
+            --text-primary: #e8e8ed;
+            --text-secondary: #8888a0;
+            --text-dim: #55556a;
+            --accent: #00e599;
+            --accent-dim: #00e59920;
+            --amber: #ffb800;
+            --red: #ff4466;
+            --blue: #4488ff;
+            --purple: #aa66ff;
+            --sidebar-width: 260px;
+        }
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .app-layout { display: flex; min-height: 100vh; }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0; left: 0; bottom: 0;
+            z-index: 10;
+        }
+        .sidebar-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .sidebar-logo { font-weight: 700; font-size: 18px; letter-spacing: -0.5px; }
+        .sidebar-logo span { color: var(--accent); }
+        .sidebar-status {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .sidebar-status::before {
+            content: '';
+            width: 5px; height: 5px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .sidebar-nav { flex: 1; padding: 16px 12px; }
+        .nav-section { margin-bottom: 24px; }
+        .nav-section-title {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-dim);
+            padding: 0 12px;
+            margin-bottom: 8px;
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.15s;
+            cursor: pointer;
+        }
+        .nav-item:hover { background: var(--bg-card); color: var(--text-primary); }
+        .nav-item.active { background: var(--accent-dim); color: var(--accent); }
+        .nav-item .icon { width: 20px; text-align: center; font-size: 16px; }
+        .sidebar-footer { padding: 16px; border-top: 1px solid var(--border); }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .user-info:hover { background: var(--bg-card); }
+        .user-avatar {
+            width: 34px; height: 34px;
+            border-radius: 8px;
+            background: var(--accent-dim);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .user-details { flex: 1; min-width: 0; }
+        .user-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .user-email { font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .logout-btn {
+            background: none; border: none; color: var(--text-dim);
+            cursor: pointer; font-size: 16px; padding: 4px; border-radius: 4px;
+            transition: all 0.15s;
+        }
+        .logout-btn:hover { color: var(--red); background: #ff446615; }
+
+        /* Main content */
+        .main-content { flex: 1; margin-left: var(--sidebar-width); }
+        .main-header {
+            padding: 20px 32px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-primary);
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+        .main-header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.3px; }
+        .header-actions { display: flex; gap: 12px; }
+        .header-btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 500;
+            font-size: 13px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .header-btn:hover { border-color: var(--text-dim); color: var(--text-primary); }
+        .header-btn.primary { background: var(--accent); color: var(--bg-primary); border-color: var(--accent); }
+        .header-btn.primary:hover { background: #00cc88; }
+        .main-body { padding: 32px; }
+
+        /* Memory Stats Bar */
+        .memory-stats {
+            display: flex;
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+        .memory-stat {
+            flex: 1;
+            background: var(--bg-secondary);
+            padding: 16px 20px;
+        }
+        .memory-stat-label {
+            font-size: 11px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .memory-stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 22px;
+            font-weight: 700;
+        }
+        .memory-stat-sub {
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-top: 2px;
+        }
+
+        /* Search bar */
+        .search-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .search-input {
+            flex: 1;
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .search-input:focus { border-color: var(--accent); }
+        .search-input::placeholder { color: var(--text-dim); }
+        .search-btn {
+            padding: 12px 24px;
+            background: var(--accent);
+            color: var(--bg-primary);
+            border: none;
+            border-radius: 8px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .search-btn:hover { background: #00cc88; }
+        .search-results {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 24px;
+            display: none;
+        }
+        .search-results.visible { display: block; }
+        .search-results-header {
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .search-result-item {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .search-result-item:last-child { border-bottom: none; }
+        .search-result-layer {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .search-result-layer.l1 { color: var(--blue); }
+        .search-result-layer.l2 { color: var(--amber); }
+        .search-result-layer.l3 { color: var(--purple); }
+        .search-result-content {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            max-height: 120px;
+            overflow: hidden;
+        }
+
+        /* Layer cards */
+        .layers-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .layer-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: border-color 0.15s;
+        }
+        .layer-card:hover { border-color: var(--text-dim); }
+        .layer-card-header {
+            padding: 20px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+        }
+        .layer-title-group { display: flex; align-items: center; gap: 12px; }
+        .layer-number {
+            width: 32px; height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .layer-number.l1 { background: #4488ff20; color: var(--blue); }
+        .layer-number.l2 { background: #ffb80020; color: var(--amber); }
+        .layer-number.l3 { background: #aa66ff20; color: var(--purple); }
+        .layer-title { font-weight: 600; font-size: 15px; }
+        .layer-meta {
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+        .layer-actions { display: flex; gap: 8px; align-items: center; }
+        .layer-edit-btn {
+            padding: 6px 14px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .layer-edit-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .layer-edit-btn.save {
+            background: var(--accent);
+            color: var(--bg-primary);
+            border-color: var(--accent);
+        }
+        .layer-edit-btn.save:hover { background: #00cc88; }
+        .layer-edit-btn.cancel:hover { border-color: var(--red); color: var(--red); }
+        .layer-edit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Token usage bar */
+        .token-usage {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .token-bar {
+            width: 120px;
+            height: 6px;
+            background: var(--bg-card);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .token-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s, background 0.3s;
+        }
+        .token-bar-fill.low { background: var(--accent); }
+        .token-bar-fill.mid { background: var(--amber); }
+        .token-bar-fill.high { background: var(--red); }
+        .token-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+
+        /* Layer content */
+        .layer-content {
+            padding: 20px 24px;
+            min-height: 100px;
+        }
+        .layer-content-text {
+            font-size: 13px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .layer-content-text::-webkit-scrollbar { width: 6px; }
+        .layer-content-text::-webkit-scrollbar-track { background: transparent; }
+        .layer-content-text::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        .layer-content-text::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+        .layer-content-empty {
+            font-size: 13px;
+            color: var(--text-dim);
+            font-style: italic;
+            padding: 20px 0;
+            text-align: center;
+        }
+        .layer-editor {
+            width: 100%;
+            min-height: 200px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.7;
+            padding: 16px;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .layer-editor:focus { border-color: var(--accent); }
+        .layer-footer {
+            padding: 12px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+        .editor-token-counter {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            transition: color 0.15s;
+        }
+        .editor-token-counter.over { color: var(--red); font-weight: 600; }
+
+        /* Audit log */
+        .audit-section {
+            margin-top: 32px;
+        }
+        .audit-section h2 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        .audit-list {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .audit-item {
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 13px;
+        }
+        .audit-item:last-child { border-bottom: none; }
+        .audit-layer {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 4px;
+            min-width: 32px;
+            text-align: center;
+        }
+        .audit-layer.l1 { background: #4488ff20; color: var(--blue); }
+        .audit-layer.l2 { background: #ffb80020; color: var(--amber); }
+        .audit-layer.l3 { background: #aa66ff20; color: var(--purple); }
+        .audit-action { color: var(--text-secondary); flex: 1; }
+        .audit-actor {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+        .audit-time {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-dim);
+        }
+        .empty-state-icon { font-size: 48px; margin-bottom: 16px; }
+        .empty-state-text { font-size: 15px; margin-bottom: 8px; }
+        .empty-state-sub { font-size: 13px; }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 13px;
+            color: var(--text-primary);
+            z-index: 1000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+        }
+        .toast.visible { transform: translateY(0); opacity: 1; }
+        .toast.success { border-color: var(--accent); }
+        .toast.error { border-color: var(--red); }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .main-content { margin-left: 0; }
+            .memory-stats { flex-direction: column; }
+            .search-bar { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">polsia<span>.es</span></div>
+                <div class="sidebar-status">activo</div>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Principal</div>
+                    <a href="/dashboard" class="nav-item">
+                        <span class="icon">&#128202;</span> Dashboard
+                    </a>
+                    <a href="/tareas" class="nav-item">
+                        <span class="icon">&#128203;</span> Tareas
+                    </a>
+                    <a href="/agentes" class="nav-item">
+                        <span class="icon">&#129302;</span> Agentes
+                    </a>
+                    <a href="/skills" class="nav-item">
+                        <span class="icon">&#128218;</span> Skills
+                    </a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Infraestructura</div>
+                    <a href="/mcp" class="nav-item">
+                        <span class="icon">&#128421;</span> Servidores MCP
+                    </a>
+                    <a href="/claves-api" class="nav-item">
+                        <span class="icon">&#128273;</span> Claves API
+                    </a>
+                    <a href="/memoria" class="nav-item active">
+                        <span class="icon">&#129504;</span> Memoria
+                    </a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Cuenta</div>
+                    <a href="/facturacion" class="nav-item">
+                        <span class="icon">&#128179;</span> Facturaci&oacute;n
+                    </a>
+                    <a href="/api/docs" class="nav-item">
+                        <span class="icon">&#128196;</span> Documentaci&oacute;n API
+                    </a>
+                </div>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar">?</div>
+                    <div class="user-details">
+                        <div class="user-name" id="userName">Cargando...</div>
+                        <div class="user-email" id="userEmail"></div>
+                    </div>
+                    <button class="logout-btn" id="logoutBtn" title="Cerrar sesi&oacute;n">&#9211;</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main content -->
+        <main class="main-content">
+            <div class="main-header">
+                <h1>Memoria del Sistema</h1>
+                <div class="header-actions">
+                    <button class="header-btn" id="refreshBtn">Actualizar</button>
+                    <button class="header-btn theme-toggle" id="themeToggle">&#127769;</button>
+                </div>
+            </div>
+
+            <div class="main-body">
+                <!-- Stats -->
+                <div class="memory-stats" id="memoryStats">
+                    <div class="memory-stat">
+                        <div class="memory-stat-label">Capa 1 — Dominio</div>
+                        <div class="memory-stat-value" id="stat-l1-tokens">—</div>
+                        <div class="memory-stat-sub" id="stat-l1-sub">de 15,000 tokens</div>
+                    </div>
+                    <div class="memory-stat">
+                        <div class="memory-stat-label">Capa 2 — Misión</div>
+                        <div class="memory-stat-value" id="stat-l2-tokens">—</div>
+                        <div class="memory-stat-sub" id="stat-l2-sub">de 3,000 tokens</div>
+                    </div>
+                    <div class="memory-stat">
+                        <div class="memory-stat-label">Capa 3 — Patrones</div>
+                        <div class="memory-stat-value" id="stat-l3-tokens">—</div>
+                        <div class="memory-stat-sub" id="stat-l3-sub">de 15,000 tokens</div>
+                    </div>
+                </div>
+
+                <!-- Search -->
+                <div class="search-bar">
+                    <input type="text" class="search-input" id="searchInput"
+                        placeholder="Buscar en memoria... (ej: deployment, API, preferencias)">
+                    <button class="search-btn" id="searchBtn">Buscar</button>
+                </div>
+
+                <!-- Search results -->
+                <div class="search-results" id="searchResults">
+                    <div class="search-results-header">
+                        <span id="searchResultsCount">0 resultados</span>
+                        <button class="layer-edit-btn" id="closeSearchBtn">Cerrar</button>
+                    </div>
+                    <div id="searchResultsList"></div>
+                </div>
+
+                <!-- Memory Layers -->
+                <div class="layers-grid" id="layersGrid">
+                    <!-- Populated by JS -->
+                </div>
+
+                <!-- Audit log -->
+                <div class="audit-section">
+                    <h2>Historial de Cambios</h2>
+                    <div class="audit-list" id="auditList">
+                        <div class="empty-state">
+                            <div class="empty-state-text">Sin cambios registrados</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+    const LAYER_NAMES = {
+        1: 'Conocimiento del Dominio',
+        2: 'Misión y Preferencias',
+        3: 'Patrones Globales'
+    };
+    const LAYER_COLORS = { 1: 'l1', 2: 'l2', 3: 'l3' };
+    let currentLayers = [];
+    let editingLayer = null;
+
+    // Helpers
+    function showToast(msg, type = 'success') {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.className = `toast visible ${type}`;
+        setTimeout(() => { toast.className = 'toast'; }, 3000);
+    }
+
+    function formatDate(d) {
+        if (!d) return '—';
+        const date = new Date(d);
+        return date.toLocaleDateString('es-ES', {
+            day: '2-digit', month: 'short', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+    }
+
+    function formatTokens(n) {
+        if (n === undefined || n === null) return '0';
+        return n.toLocaleString('es-ES');
+    }
+
+    function tokenBarClass(percent) {
+        if (percent >= 80) return 'high';
+        if (percent >= 50) return 'mid';
+        return 'low';
+    }
+
+    function estimateTokens(text) {
+        if (!text) return 0;
+        return Math.ceil(text.length / 4);
+    }
+
+    // Load all layers
+    async function loadLayers() {
+        try {
+            const res = await fetch('/api/memory/layers');
+            const data = await res.json();
+            if (!data.ok && !data.layers) {
+                showToast('Error cargando capas', 'error');
+                return;
+            }
+            currentLayers = data.layers || [];
+            renderStats(currentLayers);
+            renderLayers(currentLayers);
+        } catch (err) {
+            console.error('Load layers error:', err);
+            showToast('Error de conexión', 'error');
+        }
+    }
+
+    function renderStats(layers) {
+        for (const layer of layers) {
+            const el = document.getElementById(`stat-l${layer.layer}-tokens`);
+            const subEl = document.getElementById(`stat-l${layer.layer}-sub`);
+            if (el) {
+                el.textContent = formatTokens(layer.token_count);
+                el.style.color = layer.usage_percent >= 80 ? 'var(--red)' :
+                    layer.usage_percent >= 50 ? 'var(--amber)' : 'var(--accent)';
+            }
+            if (subEl) {
+                subEl.textContent = `${layer.usage_percent}% de ${formatTokens(layer.max_tokens)} tokens`;
+            }
+        }
+    }
+
+    function renderLayers(layers) {
+        const grid = document.getElementById('layersGrid');
+        if (!layers || layers.length === 0) {
+            grid.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">&#129504;</div>
+                    <div class="empty-state-text">Sin memoria configurada</div>
+                    <div class="empty-state-sub">Las capas de memoria se crean automáticamente al asociar una empresa.</div>
+                </div>`;
+            return;
+        }
+
+        grid.innerHTML = layers.map(layer => {
+            const lc = LAYER_COLORS[layer.layer];
+            const pct = layer.usage_percent || 0;
+            const isEditable = layer.editable;
+            const isEditing = editingLayer === layer.layer;
+            return `
+            <div class="layer-card" id="layer-card-${layer.layer}">
+                <div class="layer-card-header">
+                    <div class="layer-title-group">
+                        <div class="layer-number ${lc}">${layer.layer}</div>
+                        <div>
+                            <div class="layer-title">${layer.layer_name}</div>
+                            <div class="layer-meta">${isEditable ? 'Editable manualmente' : 'Auto-curada por el sistema'}</div>
+                        </div>
+                    </div>
+                    <div class="layer-actions">
+                        <div class="token-usage">
+                            <div class="token-bar">
+                                <div class="token-bar-fill ${tokenBarClass(pct)}" style="width: ${pct}%"></div>
+                            </div>
+                            <span class="token-text">${formatTokens(layer.token_count)} / ${formatTokens(layer.max_tokens)}</span>
+                        </div>
+                        ${isEditable ? (isEditing ?
+                            `<button class="layer-edit-btn save" onclick="saveLayer(${layer.layer})">Guardar</button>
+                             <button class="layer-edit-btn cancel" onclick="cancelEdit(${layer.layer})">Cancelar</button>` :
+                            `<button class="layer-edit-btn" onclick="startEdit(${layer.layer})">Editar</button>`
+                        ) : ''}
+                    </div>
+                </div>
+                <div class="layer-content">
+                    ${isEditing ?
+                        `<textarea class="layer-editor" id="editor-${layer.layer}"
+                            oninput="updateTokenCounter(${layer.layer})">${escapeHtml(layer.content)}</textarea>
+                         <div style="margin-top: 8px; display: flex; justify-content: flex-end;">
+                            <span class="editor-token-counter" id="token-counter-${layer.layer}">
+                                ${estimateTokens(layer.content)} / ${layer.max_tokens} tokens
+                            </span>
+                         </div>` :
+                        (layer.content ?
+                            `<div class="layer-content-text">${escapeHtml(layer.content)}</div>` :
+                            `<div class="layer-content-empty">Esta capa está vacía. ${isEditable ?
+                                'Haz clic en "Editar" para agregar contenido.' :
+                                'Se poblará automáticamente durante la ejecución de tareas.'}</div>`)
+                    }
+                </div>
+                <div class="layer-footer">
+                    <span>Última actualización: ${formatDate(layer.updated_at)}</span>
+                    <span class="mono">${pct}% utilizado</span>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Edit Layer 2
+    function startEdit(layer) {
+        editingLayer = layer;
+        renderLayers(currentLayers);
+        const editor = document.getElementById(`editor-${layer}`);
+        if (editor) editor.focus();
+    }
+
+    function cancelEdit(layer) {
+        editingLayer = null;
+        renderLayers(currentLayers);
+    }
+
+    function updateTokenCounter(layer) {
+        const editor = document.getElementById(`editor-${layer}`);
+        const counter = document.getElementById(`token-counter-${layer}`);
+        if (!editor || !counter) return;
+
+        const layerData = currentLayers.find(l => l.layer === layer);
+        const maxTokens = layerData?.max_tokens || 3000;
+        const tokens = estimateTokens(editor.value);
+        counter.textContent = `${formatTokens(tokens)} / ${formatTokens(maxTokens)} tokens`;
+        counter.className = tokens > maxTokens ?
+            'editor-token-counter over' : 'editor-token-counter';
+    }
+
+    async function saveLayer(layer) {
+        const editor = document.getElementById(`editor-${layer}`);
+        if (!editor) return;
+
+        const content = editor.value;
+        const layerData = currentLayers.find(l => l.layer === layer);
+        const maxTokens = layerData?.max_tokens || 3000;
+
+        if (estimateTokens(content) > maxTokens) {
+            showToast(`Contenido excede el límite de ${formatTokens(maxTokens)} tokens`, 'error');
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/memory/layer/${layer}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content, actor: 'user' })
+            });
+            const data = await res.json();
+            if (data.ok || data.layer) {
+                showToast('Capa actualizada correctamente');
+                editingLayer = null;
+                await loadLayers();
+                await loadAudit();
+            } else {
+                showToast(data.error || 'Error al guardar', 'error');
+            }
+        } catch (err) {
+            showToast('Error de conexión', 'error');
+        }
+    }
+
+    // Search
+    async function searchMemory() {
+        const query = document.getElementById('searchInput').value.trim();
+        if (!query) return;
+
+        try {
+            const res = await fetch(`/api/memory/search?query=${encodeURIComponent(query)}`);
+            const data = await res.json();
+            const results = data.results || [];
+            const container = document.getElementById('searchResults');
+            const list = document.getElementById('searchResultsList');
+            const count = document.getElementById('searchResultsCount');
+
+            count.textContent = `${results.length} resultado${results.length !== 1 ? 's' : ''}`;
+
+            if (results.length === 0) {
+                list.innerHTML = `
+                    <div style="padding: 24px; text-align: center; color: var(--text-dim);">
+                        Sin resultados para "${escapeHtml(query)}"
+                    </div>`;
+            } else {
+                list.innerHTML = results.map(r => `
+                    <div class="search-result-item">
+                        <div class="search-result-layer ${LAYER_COLORS[r.layer]}">
+                            Capa ${r.layer} — ${r.layer_name}
+                        </div>
+                        <div class="search-result-content">${escapeHtml(r.content ? r.content.substring(0, 500) : '')}</div>
+                    </div>
+                `).join('');
+            }
+
+            container.classList.add('visible');
+        } catch (err) {
+            showToast('Error al buscar', 'error');
+        }
+    }
+
+    // Audit log
+    async function loadAudit() {
+        try {
+            const res = await fetch('/api/memory/audit?limit=15');
+            const data = await res.json();
+            const audit = data.audit || [];
+            const list = document.getElementById('auditList');
+
+            if (audit.length === 0) {
+                list.innerHTML = `
+                    <div style="padding: 24px; text-align: center; color: var(--text-dim);">
+                        Sin cambios registrados
+                    </div>`;
+                return;
+            }
+
+            list.innerHTML = audit.map(a => `
+                <div class="audit-item">
+                    <span class="audit-layer ${LAYER_COLORS[a.layer]}">L${a.layer}</span>
+                    <span class="audit-action">${escapeHtml(a.summary || a.action)}</span>
+                    <span class="audit-actor">${escapeHtml(a.actor)}</span>
+                    <span class="audit-time">${formatDate(a.created_at)}</span>
+                </div>
+            `).join('');
+        } catch (err) {
+            console.error('Load audit error:', err);
+        }
+    }
+
+    // User info
+    async function loadUser() {
+        try {
+            const res = await fetch('/api/auth/me');
+            if (!res.ok) { window.location.href = '/login'; return; }
+            const data = await res.json();
+            const user = data.user || data;
+            document.getElementById('userName').textContent = user.name || user.email;
+            document.getElementById('userEmail').textContent = user.email || '';
+            document.getElementById('userAvatar').textContent = (user.name || user.email || '?')[0].toUpperCase();
+        } catch (e) {
+            window.location.href = '/login';
+        }
+    }
+
+    // Event listeners
+    document.getElementById('searchBtn').addEventListener('click', searchMemory);
+    document.getElementById('searchInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') searchMemory();
+    });
+    document.getElementById('closeSearchBtn').addEventListener('click', () => {
+        document.getElementById('searchResults').classList.remove('visible');
+    });
+    document.getElementById('refreshBtn').addEventListener('click', () => {
+        loadLayers();
+        loadAudit();
+        showToast('Datos actualizados');
+    });
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        window.location.href = '/login';
+    });
+
+    // Theme toggle
+    document.getElementById('themeToggle')?.addEventListener('click', () => {
+        document.body.classList.toggle('light-theme');
+    });
+
+    // Init
+    loadUser();
+    loadLayers();
+    loadAudit();
+    </script>
+</body>
+</html>

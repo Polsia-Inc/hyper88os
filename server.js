@@ -1922,6 +1922,440 @@ app.get('/api/docs/openapi.json', (req, res) => {
   });
 });
 
+// ====== MEMORY SYSTEM API ======
+
+const MEMORY_LAYER_CONFIG = {
+  1: { name: 'Conocimiento del Dominio', maxTokens: 15000, autoOnly: true },
+  2: { name: 'Misión y Preferencias', maxTokens: 3000, autoOnly: false },
+  3: { name: 'Patrones Globales', maxTokens: 15000, autoOnly: true }
+};
+
+// Rough token count estimator (~4 chars per token for Spanish text)
+function estimateTokens(text) {
+  if (!text) return 0;
+  return Math.ceil(text.length / 4);
+}
+
+// Ensure memory layers exist for a company
+async function ensureMemoryLayers(companyId) {
+  for (const layer of [1, 2, 3]) {
+    const config = MEMORY_LAYER_CONFIG[layer];
+    await pool.query(
+      `INSERT INTO memory_layers (company_id, layer, title, content, token_count, max_tokens)
+       VALUES ($1, $2, $3, '', 0, $4)
+       ON CONFLICT (company_id, layer) DO NOTHING`,
+      [companyId, layer, config.name, config.maxTokens]
+    );
+  }
+}
+
+// Search across all memory layers (keyword matching + full-text search)
+app.get('/api/memory/search', requireAuth, async (req, res) => {
+  try {
+    const { query, company_id, limit = 10 } = req.query;
+
+    if (!query) {
+      return apiError(res, 400, 'Parámetro query es requerido');
+    }
+
+    // Get company to search (first company if not specified)
+    let targetCompanyId = company_id;
+    if (!targetCompanyId) {
+      const compResult = await pool.query(
+        'SELECT id FROM companies WHERE owner_id = $1 ORDER BY created_at ASC LIMIT 1',
+        [req.user.id]
+      );
+      if (compResult.rows.length === 0) {
+        return apiSuccess(res, { results: [], query });
+      }
+      targetCompanyId = compResult.rows[0].id;
+    }
+
+    await ensureMemoryLayers(targetCompanyId);
+
+    // Full-text search with ranking + fallback to ILIKE keyword search
+    const result = await pool.query(
+      `SELECT
+        layer, title, content, token_count, max_tokens, updated_at,
+        ts_rank(search_vector, plainto_tsquery('spanish', $1)) as rank,
+        CASE
+          WHEN content ILIKE '%' || $1 || '%' THEN 1
+          ELSE 0
+        END as keyword_match
+       FROM memory_layers
+       WHERE company_id = $2
+         AND (
+           search_vector @@ plainto_tsquery('spanish', $1)
+           OR content ILIKE '%' || $1 || '%'
+           OR title ILIKE '%' || $1 || '%'
+         )
+       ORDER BY rank DESC, keyword_match DESC, updated_at DESC
+       LIMIT $3`,
+      [query, targetCompanyId, parseInt(limit)]
+    );
+
+    // Format results with layer names
+    const results = result.rows.map(row => ({
+      layer: row.layer,
+      layer_name: MEMORY_LAYER_CONFIG[row.layer]?.name || `Capa ${row.layer}`,
+      content: row.content,
+      token_count: row.token_count,
+      max_tokens: row.max_tokens,
+      relevance: Math.round((row.rank + row.keyword_match) * 100) / 100,
+      updated_at: row.updated_at
+    }));
+
+    apiSuccess(res, { results, query, company_id: targetCompanyId });
+  } catch (err) {
+    console.error('Memory search error:', err.message);
+    apiError(res, 500, 'Error al buscar en memoria');
+  }
+});
+
+// Read full content of a specific memory layer
+app.get('/api/memory/layer/:layer', requireAuth, async (req, res) => {
+  try {
+    const layer = parseInt(req.params.layer);
+    if (![1, 2, 3].includes(layer)) {
+      return apiError(res, 400, 'Capa debe ser 1, 2 o 3');
+    }
+
+    const { company_id } = req.query;
+    let targetCompanyId = company_id;
+    if (!targetCompanyId) {
+      const compResult = await pool.query(
+        'SELECT id FROM companies WHERE owner_id = $1 ORDER BY created_at ASC LIMIT 1',
+        [req.user.id]
+      );
+      if (compResult.rows.length === 0) {
+        return apiError(res, 404, 'Sin empresas registradas');
+      }
+      targetCompanyId = compResult.rows[0].id;
+    }
+
+    await ensureMemoryLayers(targetCompanyId);
+
+    const result = await pool.query(
+      `SELECT layer, title, content, token_count, max_tokens, metadata, updated_at
+       FROM memory_layers WHERE company_id = $1 AND layer = $2`,
+      [targetCompanyId, layer]
+    );
+
+    if (result.rows.length === 0) {
+      return apiError(res, 404, 'Capa de memoria no encontrada');
+    }
+
+    const row = result.rows[0];
+    apiSuccess(res, {
+      layer: row.layer,
+      layer_name: MEMORY_LAYER_CONFIG[layer].name,
+      content: row.content,
+      token_count: row.token_count,
+      max_tokens: row.max_tokens,
+      usage_percent: row.max_tokens > 0 ? Math.round((row.token_count / row.max_tokens) * 100) : 0,
+      metadata: row.metadata,
+      updated_at: row.updated_at
+    });
+  } catch (err) {
+    console.error('Memory read error:', err.message);
+    apiError(res, 500, 'Error al leer capa de memoria');
+  }
+});
+
+// Read all 3 memory layers overview
+app.get('/api/memory/layers', requireAuth, async (req, res) => {
+  try {
+    const { company_id } = req.query;
+    let targetCompanyId = company_id;
+    if (!targetCompanyId) {
+      const compResult = await pool.query(
+        'SELECT id FROM companies WHERE owner_id = $1 ORDER BY created_at ASC LIMIT 1',
+        [req.user.id]
+      );
+      if (compResult.rows.length === 0) {
+        return apiSuccess(res, { layers: [] });
+      }
+      targetCompanyId = compResult.rows[0].id;
+    }
+
+    await ensureMemoryLayers(targetCompanyId);
+
+    const result = await pool.query(
+      `SELECT layer, title, content, token_count, max_tokens, metadata, updated_at
+       FROM memory_layers WHERE company_id = $1 ORDER BY layer ASC`,
+      [targetCompanyId]
+    );
+
+    const layers = result.rows.map(row => ({
+      layer: row.layer,
+      layer_name: MEMORY_LAYER_CONFIG[row.layer]?.name || `Capa ${row.layer}`,
+      content: row.content,
+      token_count: row.token_count,
+      max_tokens: row.max_tokens,
+      usage_percent: row.max_tokens > 0 ? Math.round((row.token_count / row.max_tokens) * 100) : 0,
+      metadata: row.metadata,
+      updated_at: row.updated_at,
+      editable: !MEMORY_LAYER_CONFIG[row.layer]?.autoOnly
+    }));
+
+    apiSuccess(res, { layers, company_id: targetCompanyId });
+  } catch (err) {
+    console.error('Memory layers error:', err.message);
+    apiError(res, 500, 'Error al cargar capas de memoria');
+  }
+});
+
+// Update memory layer content (Layer 2 only for manual/CEO updates, Layer 1 & 3 for system)
+app.put('/api/memory/layer/:layer', requireAuth, requireScope('write'), async (req, res) => {
+  try {
+    const layer = parseInt(req.params.layer);
+    if (![1, 2, 3].includes(layer)) {
+      return apiError(res, 400, 'Capa debe ser 1, 2 o 3');
+    }
+
+    const { content, company_id, actor = 'user' } = req.body;
+    if (content === undefined || content === null) {
+      return apiError(res, 400, 'Contenido es requerido');
+    }
+
+    // Only allow manual edits to Layer 2 (unless system/agent actor)
+    const isSystem = actor === 'system' || actor === 'agent';
+    if (!isSystem && MEMORY_LAYER_CONFIG[layer].autoOnly) {
+      return apiError(res, 403, `Capa ${layer} solo puede ser actualizada por el sistema automáticamente`);
+    }
+
+    let targetCompanyId = company_id;
+    if (!targetCompanyId) {
+      const compResult = await pool.query(
+        'SELECT id FROM companies WHERE owner_id = $1 ORDER BY created_at ASC LIMIT 1',
+        [req.user.id]
+      );
+      if (compResult.rows.length === 0) {
+        return apiError(res, 404, 'Sin empresas registradas');
+      }
+      targetCompanyId = compResult.rows[0].id;
+    }
+
+    await ensureMemoryLayers(targetCompanyId);
+
+    // Check token budget
+    const newTokenCount = estimateTokens(content);
+    const maxTokens = MEMORY_LAYER_CONFIG[layer].maxTokens;
+    if (newTokenCount > maxTokens) {
+      return apiError(res, 400, `Contenido excede el límite de tokens (${newTokenCount}/${maxTokens}). Reduce el contenido.`);
+    }
+
+    // Get old state for audit
+    const oldResult = await pool.query(
+      'SELECT token_count FROM memory_layers WHERE company_id = $1 AND layer = $2',
+      [targetCompanyId, layer]
+    );
+    const oldTokenCount = oldResult.rows[0]?.token_count || 0;
+
+    // Update content
+    const result = await pool.query(
+      `UPDATE memory_layers SET content = $1, token_count = $2, updated_at = NOW()
+       WHERE company_id = $3 AND layer = $4 RETURNING *`,
+      [content, newTokenCount, targetCompanyId, layer]
+    );
+
+    // Audit log
+    await pool.query(
+      `INSERT INTO memory_audit_log (company_id, layer, action, actor, old_token_count, new_token_count, summary)
+       VALUES ($1, $2, 'update', $3, $4, $5, $6)`,
+      [targetCompanyId, layer, actor, oldTokenCount, newTokenCount,
+        `Contenido actualizado (${oldTokenCount} → ${newTokenCount} tokens)`]
+    );
+
+    const row = result.rows[0];
+    apiSuccess(res, {
+      layer: row.layer,
+      layer_name: MEMORY_LAYER_CONFIG[layer].name,
+      token_count: row.token_count,
+      max_tokens: row.max_tokens,
+      usage_percent: row.max_tokens > 0 ? Math.round((row.token_count / row.max_tokens) * 100) : 0,
+      updated_at: row.updated_at
+    });
+  } catch (err) {
+    console.error('Memory update error:', err.message);
+    apiError(res, 500, 'Error al actualizar capa de memoria');
+  }
+});
+
+// Auto-curate: Extract learnings from task execution and update Layer 1 or 3
+app.post('/api/memory/curate', requireAuth, requireScope('write'), async (req, res) => {
+  try {
+    const { company_id, layer, learnings, task_id, agent_type } = req.body;
+
+    if (!learnings || !layer) {
+      return apiError(res, 400, 'learnings y layer son requeridos');
+    }
+    if (![1, 3].includes(layer)) {
+      return apiError(res, 400, 'Auto-curación solo disponible para capas 1 y 3');
+    }
+
+    let targetCompanyId = company_id;
+    if (!targetCompanyId) {
+      const compResult = await pool.query(
+        'SELECT id FROM companies WHERE owner_id = $1 ORDER BY created_at ASC LIMIT 1',
+        [req.user.id]
+      );
+      if (compResult.rows.length === 0) {
+        return apiError(res, 404, 'Sin empresas registradas');
+      }
+      targetCompanyId = compResult.rows[0].id;
+    }
+
+    await ensureMemoryLayers(targetCompanyId);
+
+    // Get current content
+    const current = await pool.query(
+      'SELECT content, token_count, max_tokens FROM memory_layers WHERE company_id = $1 AND layer = $2',
+      [targetCompanyId, layer]
+    );
+
+    const currentContent = current.rows[0]?.content || '';
+    const maxTokens = MEMORY_LAYER_CONFIG[layer].maxTokens;
+
+    // Append learnings (with dedup check - simple substring match)
+    let newContent = currentContent;
+    const learningLines = Array.isArray(learnings) ? learnings : [learnings];
+    const addedLearnings = [];
+
+    for (const learning of learningLines) {
+      const trimmed = learning.trim();
+      if (!trimmed) continue;
+      // Skip if already present (simple dedup)
+      if (currentContent.includes(trimmed)) continue;
+
+      newContent = newContent ? newContent + '\n' + trimmed : trimmed;
+      addedLearnings.push(trimmed);
+    }
+
+    // Enforce token budget — if over limit, trim oldest content (first lines)
+    let newTokenCount = estimateTokens(newContent);
+    if (newTokenCount > maxTokens) {
+      const lines = newContent.split('\n');
+      while (estimateTokens(lines.join('\n')) > maxTokens && lines.length > 1) {
+        lines.shift(); // Remove oldest content first
+      }
+      newContent = lines.join('\n');
+      newTokenCount = estimateTokens(newContent);
+    }
+
+    // Update
+    await pool.query(
+      `UPDATE memory_layers SET content = $1, token_count = $2, updated_at = NOW()
+       WHERE company_id = $3 AND layer = $4`,
+      [newContent, newTokenCount, targetCompanyId, layer]
+    );
+
+    // Audit
+    await pool.query(
+      `INSERT INTO memory_audit_log (company_id, layer, action, actor, old_token_count, new_token_count, summary)
+       VALUES ($1, $2, 'curate', $3, $4, $5, $6)`,
+      [targetCompanyId, layer, agent_type || 'system',
+        current.rows[0]?.token_count || 0, newTokenCount,
+        `Auto-curación: +${addedLearnings.length} aprendizajes${task_id ? ` (tarea #${task_id})` : ''}`]
+    );
+
+    // Save conversation summary if task_id provided
+    if (task_id && addedLearnings.length > 0) {
+      await pool.query(
+        `INSERT INTO conversation_summaries (company_id, task_id, agent_type, message_count, summary, key_learnings)
+         VALUES ($1, $2, $3, 0, $4, $5)`,
+        [targetCompanyId, task_id, agent_type || 'system',
+          addedLearnings.join('\n'),
+          JSON.stringify(addedLearnings)]
+      );
+    }
+
+    apiSuccess(res, {
+      layer,
+      added_learnings: addedLearnings.length,
+      token_count: newTokenCount,
+      max_tokens: maxTokens,
+      usage_percent: Math.round((newTokenCount / maxTokens) * 100)
+    });
+  } catch (err) {
+    console.error('Memory curate error:', err.message);
+    apiError(res, 500, 'Error al curar memoria');
+  }
+});
+
+// Get memory audit history
+app.get('/api/memory/audit', requireAuth, async (req, res) => {
+  try {
+    const { company_id, layer, limit = 20 } = req.query;
+
+    let targetCompanyId = company_id;
+    if (!targetCompanyId) {
+      const compResult = await pool.query(
+        'SELECT id FROM companies WHERE owner_id = $1 ORDER BY created_at ASC LIMIT 1',
+        [req.user.id]
+      );
+      if (compResult.rows.length === 0) {
+        return apiSuccess(res, { audit: [] });
+      }
+      targetCompanyId = compResult.rows[0].id;
+    }
+
+    let query = `SELECT * FROM memory_audit_log WHERE company_id = $1`;
+    const params = [targetCompanyId];
+    let idx = 2;
+
+    if (layer) {
+      query += ` AND layer = $${idx}`;
+      params.push(parseInt(layer));
+      idx++;
+    }
+
+    query += ` ORDER BY created_at DESC LIMIT $${idx}`;
+    params.push(parseInt(limit));
+
+    const result = await pool.query(query, params);
+    apiSuccess(res, { audit: result.rows });
+  } catch (err) {
+    console.error('Memory audit error:', err.message);
+    apiError(res, 500, 'Error al cargar historial de memoria');
+  }
+});
+
+// Save conversation summary (auto-save every ~20 messages)
+app.post('/api/memory/conversation-summary', requireAuth, requireScope('write'), async (req, res) => {
+  try {
+    const { company_id, task_id, agent_type, message_count, summary, key_learnings } = req.body;
+
+    if (!summary) {
+      return apiError(res, 400, 'Resumen es requerido');
+    }
+
+    let targetCompanyId = company_id;
+    if (!targetCompanyId) {
+      const compResult = await pool.query(
+        'SELECT id FROM companies WHERE owner_id = $1 ORDER BY created_at ASC LIMIT 1',
+        [req.user.id]
+      );
+      if (compResult.rows.length === 0) {
+        return apiError(res, 404, 'Sin empresas registradas');
+      }
+      targetCompanyId = compResult.rows[0].id;
+    }
+
+    const result = await pool.query(
+      `INSERT INTO conversation_summaries (company_id, task_id, agent_type, message_count, summary, key_learnings)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [targetCompanyId, task_id || null, agent_type || 'system',
+        message_count || 0, summary, JSON.stringify(key_learnings || [])]
+    );
+
+    apiSuccess(res, { summary: result.rows[0] }, 201);
+  } catch (err) {
+    console.error('Conversation summary error:', err.message);
+    apiError(res, 500, 'Error al guardar resumen de conversación');
+  }
+});
+
 // ====== DASHBOARD STATS ======
 
 async function getTaskCounts(userId) {
@@ -2060,6 +2494,11 @@ app.get('/mcp', requireAuth, (req, res) => {
 // API documentation page (public)
 app.get('/api/docs', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'api-docs.html'));
+});
+
+// Memory system page (protected)
+app.get('/memoria', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'memory.html'));
 });
 
 // API keys management page (protected)
