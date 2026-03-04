@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claves API &mdash; Polsia ES</title>
+    <script src="/theme.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0a0a0f;
+            --bg-secondary: #111118;
+            --surface: #12121a;
+            --bg-card: #16161f;
+            --border: #1e1e2e;
+            --text: #e4e4ef;
+            --text-primary: #e8e8ed;
+            --text-secondary: #8888a0;
+            --muted: #8888a0;
+            --text-dim: #55556a;
+            --accent: #00e599;
+            --accent-dim: #00e59920;
+            --amber: #ffb800;
+            --red: #ff4466;
+            --blue: #4488ff;
+            --sidebar-width: 260px;
+        }
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* ===== Layout ===== */
+        .app-layout { display: flex; min-height: 100vh; }
+
+        /* ===== Sidebar ===== */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0; left: 0; bottom: 0;
+            z-index: 10;
+            transition: transform 0.3s;
+        }
+        .sidebar-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .sidebar-logo { font-weight: 700; font-size: 18px; letter-spacing: -0.5px; }
+        .sidebar-logo span { color: var(--accent); }
+        .sidebar-status {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .sidebar-status::before {
+            content: '';
+            width: 5px; height: 5px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        .sidebar-nav { flex: 1; padding: 16px 12px; overflow-y: auto; }
+        .nav-section { margin-bottom: 24px; }
+        .nav-section-title {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-dim);
+            padding: 0 12px;
+            margin-bottom: 8px;
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.15s;
+            cursor: pointer;
+        }
+        .nav-item:hover { background: var(--bg-card); color: var(--text-primary); }
+        .nav-item.active { background: var(--accent-dim); color: var(--accent); }
+        .nav-item .icon { width: 20px; text-align: center; font-size: 16px; }
+
+        .sidebar-footer { padding: 16px; border-top: 1px solid var(--border); }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .user-info:hover { background: var(--bg-card); }
+        .user-avatar {
+            width: 34px; height: 34px;
+            border-radius: 8px;
+            background: var(--accent-dim);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .user-details { flex: 1; min-width: 0; }
+        .user-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .user-email { font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .logout-btn {
+            background: none; border: none; color: var(--text-dim);
+            cursor: pointer; font-size: 16px; padding: 4px; border-radius: 4px;
+            transition: all 0.15s;
+        }
+        .logout-btn:hover { color: var(--red); background: #ff446615; }
+
+        /* ===== Main Content ===== */
+        .main-content { flex: 1; margin-left: var(--sidebar-width); }
+        .main-header {
+            padding: 20px 32px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg);
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+        .main-header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.3px; }
+        .header-actions { display: flex; gap: 12px; align-items: center; }
+        .header-btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 500;
+            font-size: 13px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .header-btn:hover { border-color: var(--text-dim); color: var(--text-primary); }
+        .header-btn.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+        .header-btn.primary:hover { background: #00cc88; }
+
+        .main-body { padding: 32px; }
+
+        /* ===== Stats Grid ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 32px;
+        }
+        .stat-card {
+            background: var(--bg-secondary);
+            padding: 24px;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 32px;
+            font-weight: 700;
+        }
+        .stat-value.green { color: var(--accent); }
+        .stat-value.amber { color: var(--amber); }
+        .stat-value.red { color: var(--red); }
+
+        /* ===== Keys Table ===== */
+        .keys-panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .keys-panel-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .keys-panel-title { font-size: 14px; font-weight: 600; }
+        .keys-panel-count {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            padding: 3px 10px;
+            border-radius: 100px;
+            background: var(--bg-card);
+            color: var(--text-dim);
+        }
+
+        .keys-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .keys-table th {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+            white-space: nowrap;
+        }
+        .keys-table td {
+            padding: 14px 16px;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+        .keys-table tr:last-child td { border-bottom: none; }
+        .keys-table tbody tr {
+            transition: background 0.1s;
+        }
+        .keys-table tbody tr:hover {
+            background: var(--bg-card);
+        }
+
+        .key-prefix {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            padding: 4px 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--accent);
+            letter-spacing: 0.5px;
+        }
+        .key-name { font-weight: 500; }
+
+        .scope-tag {
+            display: inline-block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            margin-right: 4px;
+            margin-bottom: 2px;
+        }
+        .scope-tag.admin { color: var(--amber); border-color: #ffb80030; }
+        .scope-tag.write { color: var(--blue); border-color: #4488ff30; }
+        .scope-tag.read { color: var(--accent); border-color: #00e59930; }
+
+        .rate-limit {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .last-used {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+        .expires-at {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+
+        /* Status indicators */
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            padding: 3px 10px;
+            border-radius: 100px;
+        }
+        .status-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .status-active { color: var(--accent); }
+        .status-active .status-dot { background: var(--accent); }
+        .status-revoked { color: var(--red); }
+        .status-revoked .status-dot { background: var(--red); }
+        .status-expired { color: var(--amber); }
+        .status-expired .status-dot { background: var(--amber); }
+
+        .revoke-btn {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 5px 12px;
+            border-radius: 6px;
+            border: 1px solid #ff446630;
+            background: transparent;
+            color: var(--red);
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .revoke-btn:hover {
+            background: #ff446615;
+            border-color: var(--red);
+        }
+        .revoke-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        .revoke-btn:disabled:hover {
+            background: transparent;
+            border-color: #ff446630;
+        }
+
+        /* ===== Empty State ===== */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+        .empty-state .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.4;
+        }
+        .empty-state h3 {
+            color: var(--text-secondary);
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+        .empty-state p {
+            color: var(--text-dim);
+            font-size: 14px;
+            max-width: 340px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        .empty-state .cta-btn {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 24px;
+            background: var(--accent);
+            color: var(--bg);
+            border: none;
+            border-radius: 8px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .empty-state .cta-btn:hover { background: #00cc88; }
+
+        /* ===== Loading ===== */
+        .loading-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-dim);
+        }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ===== Modal Overlay ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+
+        .modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            width: 520px;
+            max-width: 95vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .modal-title { font-size: 16px; font-weight: 600; }
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.15s;
+            line-height: 1;
+        }
+        .modal-close:hover { color: var(--text-primary); background: var(--bg-card); }
+        .modal-body { padding: 24px; }
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        /* ===== Form Elements ===== */
+        .form-group { margin-bottom: 20px; }
+        .form-group:last-child { margin-bottom: 0; }
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .form-input {
+            width: 100%;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .form-input:focus { border-color: var(--accent); }
+        .form-input::placeholder { color: var(--text-dim); }
+
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+        .checkbox-group {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .checkbox-item input[type="checkbox"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px; height: 18px;
+            border: 2px solid var(--border);
+            border-radius: 4px;
+            background: var(--bg-card);
+            cursor: pointer;
+            position: relative;
+            transition: all 0.15s;
+            flex-shrink: 0;
+        }
+        .checkbox-item input[type="checkbox"]:checked {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+        .checkbox-item input[type="checkbox"]:checked::after {
+            content: '';
+            position: absolute;
+            left: 5px; top: 1px;
+            width: 4px; height: 9px;
+            border: solid var(--bg);
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+        .checkbox-item input[type="checkbox"]:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent-dim);
+        }
+        .checkbox-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .checkbox-desc {
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-top: 1px;
+        }
+
+        .form-hint {
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-top: 6px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.15s;
+            border: 1px solid var(--border);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-ghost { background: transparent; color: var(--text-secondary); }
+        .btn-ghost:hover { background: var(--bg-card); color: var(--text-primary); }
+        .btn-primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+        .btn-primary:hover { background: #00cc88; }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ===== Key Reveal Box ===== */
+        .key-reveal-box {
+            background: var(--bg-card);
+            border: 1px solid var(--accent);
+            border-radius: 12px;
+            padding: 24px;
+            margin-top: 20px;
+        }
+        .key-reveal-warning {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: #ffb80010;
+            border: 1px solid #ffb80030;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            color: var(--amber);
+            font-weight: 500;
+        }
+        .key-reveal-warning .warn-icon { font-size: 16px; flex-shrink: 0; }
+        .key-reveal-value {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .key-reveal-input {
+            flex: 1;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            padding: 12px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--accent);
+            outline: none;
+            letter-spacing: 0.5px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .copy-btn {
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .copy-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .copy-btn.copied {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        /* ===== Confirm Dialog ===== */
+        .confirm-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+        }
+        .confirm-overlay.open { display: flex; }
+        .confirm-dialog {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+            width: 420px;
+            max-width: 95vw;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+        .confirm-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .confirm-message {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        .confirm-key {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-primary);
+            background: var(--bg-card);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .confirm-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+        .btn-danger {
+            background: transparent;
+            color: var(--red);
+            border-color: #ff446630;
+        }
+        .btn-danger:hover {
+            background: #ff446615;
+            border-color: var(--red);
+        }
+
+        /* ===== Toast ===== */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            z-index: 300;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.success { background: var(--accent); color: var(--bg); }
+        .toast.error { background: var(--red); color: white; }
+
+        /* ===== Mobile ===== */
+        .mobile-toggle {
+            display: none;
+            position: fixed;
+            top: 16px; left: 16px;
+            z-index: 20;
+            width: 40px; height: 40px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 20px;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+        }
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9;
+        }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 1200px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 1024px) {
+            .keys-table th:nth-child(5),
+            .keys-table td:nth-child(5),
+            .keys-table th:nth-child(6),
+            .keys-table td:nth-child(6) {
+                display: none;
+            }
+        }
+        @media (max-width: 768px) {
+            .mobile-toggle { display: flex; }
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            .main-content { margin-left: 0; }
+            .main-header { padding-left: 64px; }
+            .main-body { padding: 20px; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .keys-table th:nth-child(4),
+            .keys-table td:nth-child(4),
+            .keys-table th:nth-child(5),
+            .keys-table td:nth-child(5),
+            .keys-table th:nth-child(6),
+            .keys-table td:nth-child(6) {
+                display: none;
+            }
+            .form-row { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 640px) {
+            .stats-grid { grid-template-columns: 1fr; }
+            .keys-table-wrapper { overflow-x: auto; }
+            .keys-table { min-width: 600px; }
+            .keys-table th, .keys-table td { display: table-cell; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Mobile toggle -->
+    <button class="mobile-toggle" id="mobileToggle">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <div class="app-layout">
+        <!-- ===== Sidebar ===== -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">polsia<span>.es</span></div>
+                <div class="sidebar-status">activo</div>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Principal</div>
+                    <a href="/dashboard" class="nav-item">
+                        <span class="icon">&#128202;</span> Dashboard
+                    </a>
+                    <a href="/tareas" class="nav-item">
+                        <span class="icon">&#128203;</span> Tareas
+                    </a>
+                    <a href="/agentes" class="nav-item">
+                        <span class="icon">&#129302;</span> Agentes
+                    </a>
+                    <a href="/skills" class="nav-item">
+                        <span class="icon">&#9889;</span> Skills
+                    </a>
+                    <a href="/mcp" class="nav-item">
+                        <span class="icon">&#128421;</span> Servidores MCP
+                    </a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Configuraci&oacute;n</div>
+                    <a href="/claves-api" class="nav-item active">
+                        <span class="icon">&#128273;</span> Claves API
+                    </a>
+                    <a href="/facturacion" class="nav-item">
+                        <span class="icon">&#128179;</span> Facturaci&oacute;n
+                    </a>
+                    <a href="/api/docs" class="nav-item">
+                        <span class="icon">&#128214;</span> Documentaci&oacute;n API
+                    </a>
+                </div>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar">?</div>
+                    <div class="user-details">
+                        <div class="user-name" id="userName">Cargando...</div>
+                        <div class="user-email" id="userEmail"></div>
+                    </div>
+                    <button class="logout-btn" id="logoutBtn" title="Cerrar sesi&oacute;n">&#9211;</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ===== Main Content ===== -->
+        <main class="main-content">
+            <div class="main-header">
+                <h1>Claves API</h1>
+                <div class="header-actions">
+                    <button class="header-btn" id="themeToggle">&#127769;</button>
+                    <button class="header-btn primary" id="generateKeyBtn">+ Generar Clave</button>
+                </div>
+            </div>
+
+            <div class="main-body">
+                <!-- Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total de Claves</div>
+                        <div class="stat-value" id="statTotal">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Activas</div>
+                        <div class="stat-value green" id="statActive">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Revocadas</div>
+                        <div class="stat-value red" id="statRevoked">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Expiradas</div>
+                        <div class="stat-value amber" id="statExpired">-</div>
+                    </div>
+                </div>
+
+                <!-- Loading -->
+                <div id="loadingState" class="loading-state">
+                    <div class="spinner"></div>
+                    <div>Cargando claves API...</div>
+                </div>
+
+                <!-- Keys table -->
+                <div id="keysPanel" class="keys-panel" style="display: none;">
+                    <div class="keys-panel-header">
+                        <div class="keys-panel-title">Claves Registradas</div>
+                        <div class="keys-panel-count" id="keysCount">0 claves</div>
+                    </div>
+                    <div class="keys-table-wrapper">
+                        <table class="keys-table">
+                            <thead>
+                                <tr>
+                                    <th>Prefijo</th>
+                                    <th>Nombre</th>
+                                    <th>Scopes</th>
+                                    <th>L&iacute;mite/min</th>
+                                    <th>&Uacute;ltimo uso</th>
+                                    <th>Caduca</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="keysTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Empty state -->
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <div class="empty-icon">&#128273;</div>
+                    <h3>Sin claves API</h3>
+                    <p>Genera tu primera clave API para autenticar solicitudes a la plataforma Polsia ES.</p>
+                    <button class="cta-btn" id="emptyGenerateBtn">+ Generar Clave</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ===== Generate Key Modal ===== -->
+    <div class="modal-overlay" id="generateModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">Generar Nueva Clave API</div>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="keyForm" autocomplete="off">
+                    <div class="form-group">
+                        <label class="form-label">Nombre de la clave *</label>
+                        <input type="text" class="form-input" id="keyName" placeholder="Ej: Producci&oacute;n Backend, Integraci&oacute;n CRM..." required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Permisos (Scopes)</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-item">
+                                <input type="checkbox" id="scopeRead" value="read" checked>
+                                <div>
+                                    <div class="checkbox-label">read</div>
+                                    <div class="checkbox-desc">Lectura de datos</div>
+                                </div>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" id="scopeWrite" value="write" checked>
+                                <div>
+                                    <div class="checkbox-label">write</div>
+                                    <div class="checkbox-desc">Escritura de datos</div>
+                                </div>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" id="scopeAdmin" value="admin">
+                                <div>
+                                    <div class="checkbox-label">admin</div>
+                                    <div class="checkbox-desc">Administraci&oacute;n total</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">L&iacute;mite por minuto</label>
+                            <input type="number" class="form-input" id="keyRateLimit" value="60" min="1" max="10000" placeholder="60">
+                            <div class="form-hint">Solicitudes m&aacute;ximas por minuto</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Expira en (d&iacute;as)</label>
+                            <input type="number" class="form-input" id="keyExpiresDays" min="1" max="3650" placeholder="Opcional - sin vencimiento">
+                            <div class="form-hint">Dejar vac&iacute;o para sin vencimiento</div>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Key Reveal (shown after generation) -->
+                <div id="keyRevealBox" class="key-reveal-box" style="display: none;">
+                    <div class="key-reveal-warning">
+                        <span class="warn-icon">&#9888;</span>
+                        Guarda esta clave. No se mostrar&aacute; de nuevo.
+                    </div>
+                    <div class="key-reveal-value">
+                        <input type="text" class="key-reveal-input" id="revealedKeyInput" readonly>
+                        <button type="button" class="copy-btn" id="copyKeyBtn">Copiar</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" id="modalFooter">
+                <button class="btn btn-ghost" id="modalCancel">Cancelar</button>
+                <button class="btn btn-primary" id="modalGenerate">Generar Clave</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Confirm Revoke Dialog ===== -->
+    <div class="confirm-overlay" id="confirmOverlay">
+        <div class="confirm-dialog">
+            <div class="confirm-title">Revocar Clave API</div>
+            <div class="confirm-message">
+                &iquest;Est&aacute;s seguro de que quieres revocar la clave <span class="confirm-key" id="confirmKeyPrefix"></span>?
+                Esta acci&oacute;n no se puede deshacer y cualquier servicio que use esta clave dejar&aacute; de funcionar.
+            </div>
+            <div class="confirm-actions">
+                <button class="btn btn-ghost" id="confirmCancel">Cancelar</button>
+                <button class="btn btn-danger" id="confirmRevoke">Revocar Clave</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+    // ============================
+    //  State
+    // ============================
+    let allKeys = [];
+    let revokeTargetId = null;
+    let revokeTargetPrefix = '';
+
+    // ============================
+    //  Helpers
+    // ============================
+    function showToast(msg, type = 'success') {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = `toast ${type} show`;
+        setTimeout(() => t.classList.remove('show'), 3500);
+    }
+
+    function esc(s) {
+        const d = document.createElement('div');
+        d.textContent = s || '';
+        return d.innerHTML;
+    }
+
+    function fmtDate(dateStr) {
+        if (!dateStr) return '-';
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        });
+    }
+
+    function fmtDateTime(dateStr) {
+        if (!dateStr) return 'Nunca';
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    function timeAgo(dateStr) {
+        if (!dateStr) return 'Nunca';
+        const d = new Date(dateStr);
+        const now = new Date();
+        const diff = Math.floor((now - d) / 1000);
+        if (diff < 60) return 'ahora';
+        if (diff < 3600) return `hace ${Math.floor(diff / 60)}m`;
+        if (diff < 86400) return `hace ${Math.floor(diff / 3600)}h`;
+        if (diff < 604800) return `hace ${Math.floor(diff / 86400)}d`;
+        return fmtDate(dateStr);
+    }
+
+    function getKeyStatus(key) {
+        if (!key.is_active) return 'revoked';
+        if (key.expires_at && new Date(key.expires_at) < new Date()) return 'expired';
+        return 'active';
+    }
+
+    function getStatusLabel(status) {
+        switch (status) {
+            case 'active': return 'Activa';
+            case 'revoked': return 'Revocada';
+            case 'expired': return 'Expirada';
+            default: return status;
+        }
+    }
+
+    function parseScopesArray(scopes) {
+        if (Array.isArray(scopes)) return scopes;
+        if (typeof scopes === 'string') {
+            try { return JSON.parse(scopes); } catch (e) { return [scopes]; }
+        }
+        return [];
+    }
+
+    // ============================
+    //  API
+    // ============================
+    async function api(url, opts = {}) {
+        const res = await fetch(url, {
+            headers: { 'Content-Type': 'application/json', ...opts.headers },
+            ...opts
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error desconocido');
+        return data;
+    }
+
+    // ============================
+    //  Load Keys
+    // ============================
+    async function loadKeys() {
+        try {
+            const data = await api('/api/keys');
+            allKeys = data.keys || [];
+            renderKeys();
+            renderStats();
+        } catch (err) {
+            console.error('Error loading keys:', err);
+            document.getElementById('loadingState').innerHTML =
+                '<div style="color: var(--red);">Error al cargar claves API</div>';
+        }
+    }
+
+    // ============================
+    //  Render Stats
+    // ============================
+    function renderStats() {
+        let active = 0, revoked = 0, expired = 0;
+        allKeys.forEach(key => {
+            const status = getKeyStatus(key);
+            if (status === 'active') active++;
+            else if (status === 'revoked') revoked++;
+            else if (status === 'expired') expired++;
+        });
+
+        document.getElementById('statTotal').textContent = allKeys.length;
+        document.getElementById('statActive').textContent = active;
+        document.getElementById('statRevoked').textContent = revoked;
+        document.getElementById('statExpired').textContent = expired;
+    }
+
+    // ============================
+    //  Render Keys
+    // ============================
+    function renderKeys() {
+        const loading = document.getElementById('loadingState');
+        const panel = document.getElementById('keysPanel');
+        const empty = document.getElementById('emptyState');
+
+        loading.style.display = 'none';
+
+        if (allKeys.length === 0) {
+            panel.style.display = 'none';
+            empty.style.display = 'block';
+            return;
+        }
+
+        empty.style.display = 'none';
+        panel.style.display = 'block';
+        document.getElementById('keysCount').textContent =
+            `${allKeys.length} clave${allKeys.length !== 1 ? 's' : ''}`;
+
+        const tbody = document.getElementById('keysTableBody');
+        tbody.innerHTML = allKeys.map(key => {
+            const status = getKeyStatus(key);
+            const scopes = parseScopesArray(key.scopes);
+            const isRevocable = status === 'active';
+
+            return `
+                <tr>
+                    <td><span class="key-prefix">${esc(key.key_prefix)}...</span></td>
+                    <td><span class="key-name">${esc(key.name)}</span></td>
+                    <td>
+                        ${scopes.map(s => {
+                            const cls = s === 'admin' ? 'admin' : s === 'write' ? 'write' : 'read';
+                            return `<span class="scope-tag ${cls}">${esc(s)}</span>`;
+                        }).join('')}
+                    </td>
+                    <td><span class="rate-limit">${key.rate_limit_per_minute || 60}</span></td>
+                    <td><span class="last-used" title="${key.last_used_at ? new Date(key.last_used_at).toLocaleString('es-ES') : 'Nunca'}">${timeAgo(key.last_used_at)}</span></td>
+                    <td><span class="expires-at">${key.expires_at ? fmtDate(key.expires_at) : 'Sin vencimiento'}</span></td>
+                    <td>
+                        <span class="status-indicator status-${status}">
+                            <span class="status-dot"></span>
+                            ${getStatusLabel(status)}
+                        </span>
+                    </td>
+                    <td>
+                        <button
+                            class="revoke-btn"
+                            data-id="${key.id}"
+                            data-prefix="${esc(key.key_prefix)}"
+                            ${!isRevocable ? 'disabled' : ''}
+                        >
+                            Revocar
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        // Attach revoke handlers
+        tbody.querySelectorAll('.revoke-btn:not([disabled])').forEach(btn => {
+            btn.addEventListener('click', () => {
+                openConfirmRevoke(parseInt(btn.dataset.id), btn.dataset.prefix);
+            });
+        });
+    }
+
+    // ============================
+    //  Generate Key
+    // ============================
+    function openGenerateModal() {
+        document.getElementById('keyForm').reset();
+        document.getElementById('scopeRead').checked = true;
+        document.getElementById('scopeWrite').checked = true;
+        document.getElementById('scopeAdmin').checked = false;
+        document.getElementById('keyRateLimit').value = 60;
+        document.getElementById('keyExpiresDays').value = '';
+        document.getElementById('keyRevealBox').style.display = 'none';
+        document.getElementById('keyForm').style.display = 'block';
+        document.getElementById('modalTitle').textContent = 'Generar Nueva Clave API';
+
+        const footer = document.getElementById('modalFooter');
+        footer.innerHTML = `
+            <button class="btn btn-ghost" id="modalCancel">Cancelar</button>
+            <button class="btn btn-primary" id="modalGenerate">Generar Clave</button>
+        `;
+        document.getElementById('modalCancel').addEventListener('click', closeGenerateModal);
+        document.getElementById('modalGenerate').addEventListener('click', generateKey);
+
+        document.getElementById('generateModal').classList.add('open');
+    }
+
+    function closeGenerateModal() {
+        document.getElementById('generateModal').classList.remove('open');
+    }
+
+    async function generateKey() {
+        const name = document.getElementById('keyName').value.trim();
+        if (!name) {
+            showToast('El nombre de la clave es requerido', 'error');
+            document.getElementById('keyName').focus();
+            return;
+        }
+
+        const scopes = [];
+        if (document.getElementById('scopeRead').checked) scopes.push('read');
+        if (document.getElementById('scopeWrite').checked) scopes.push('write');
+        if (document.getElementById('scopeAdmin').checked) scopes.push('admin');
+
+        if (scopes.length === 0) {
+            showToast('Selecciona al menos un permiso', 'error');
+            return;
+        }
+
+        const rateLimit = parseInt(document.getElementById('keyRateLimit').value) || 60;
+        const expiresDays = document.getElementById('keyExpiresDays').value
+            ? parseInt(document.getElementById('keyExpiresDays').value)
+            : null;
+
+        const btn = document.getElementById('modalGenerate');
+        btn.disabled = true;
+        btn.textContent = 'Generando...';
+
+        try {
+            const data = await api('/api/keys', {
+                method: 'POST',
+                body: JSON.stringify({
+                    name: name,
+                    scopes: scopes,
+                    rate_limit_per_minute: rateLimit,
+                    expires_in_days: expiresDays
+                })
+            });
+
+            // Show the generated key
+            document.getElementById('keyForm').style.display = 'none';
+            document.getElementById('keyRevealBox').style.display = 'block';
+            document.getElementById('revealedKeyInput').value = data.api_key;
+            document.getElementById('modalTitle').textContent = 'Clave API Generada';
+
+            // Update footer to just have a close button
+            const footer = document.getElementById('modalFooter');
+            footer.innerHTML = `
+                <button class="btn btn-primary" id="modalDone">Listo</button>
+            `;
+            document.getElementById('modalDone').addEventListener('click', () => {
+                closeGenerateModal();
+                loadKeys();
+            });
+
+            // Setup copy button
+            setupCopyButton();
+
+            showToast('Clave API generada correctamente');
+        } catch (err) {
+            showToast(err.message, 'error');
+            btn.disabled = false;
+            btn.textContent = 'Generar Clave';
+        }
+    }
+
+    function setupCopyButton() {
+        const copyBtn = document.getElementById('copyKeyBtn');
+        copyBtn.addEventListener('click', async () => {
+            const keyValue = document.getElementById('revealedKeyInput').value;
+            try {
+                await navigator.clipboard.writeText(keyValue);
+                copyBtn.textContent = 'Copiado';
+                copyBtn.classList.add('copied');
+                setTimeout(() => {
+                    copyBtn.textContent = 'Copiar';
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+            } catch (err) {
+                // Fallback: select text
+                const input = document.getElementById('revealedKeyInput');
+                input.select();
+                input.setSelectionRange(0, 99999);
+                try {
+                    document.execCommand('copy');
+                    copyBtn.textContent = 'Copiado';
+                    copyBtn.classList.add('copied');
+                    setTimeout(() => {
+                        copyBtn.textContent = 'Copiar';
+                        copyBtn.classList.remove('copied');
+                    }, 2000);
+                } catch (e) {
+                    showToast('No se pudo copiar. Selecciona el texto manualmente.', 'error');
+                }
+            }
+        });
+    }
+
+    // ============================
+    //  Revoke Key
+    // ============================
+    function openConfirmRevoke(id, prefix) {
+        revokeTargetId = id;
+        revokeTargetPrefix = prefix;
+        document.getElementById('confirmKeyPrefix').textContent = prefix + '...';
+        document.getElementById('confirmOverlay').classList.add('open');
+    }
+
+    function closeConfirmRevoke() {
+        document.getElementById('confirmOverlay').classList.remove('open');
+        revokeTargetId = null;
+        revokeTargetPrefix = '';
+    }
+
+    async function revokeKey() {
+        if (!revokeTargetId) return;
+
+        const btn = document.getElementById('confirmRevoke');
+        btn.disabled = true;
+        btn.textContent = 'Revocando...';
+
+        try {
+            await api(`/api/keys/${revokeTargetId}`, { method: 'DELETE' });
+            showToast(`Clave ${revokeTargetPrefix}... revocada`);
+            closeConfirmRevoke();
+            loadKeys();
+        } catch (err) {
+            showToast(err.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Revocar Clave';
+        }
+    }
+
+    // ============================
+    //  User
+    // ============================
+    async function loadUser() {
+        try {
+            const res = await fetch('/api/auth/me');
+            if (!res.ok) { window.location.href = '/login'; return; }
+            const { user } = await res.json();
+            document.getElementById('userName').textContent = user.name || user.email.split('@')[0];
+            document.getElementById('userEmail').textContent = user.email;
+            document.getElementById('userAvatar').textContent = (user.name || user.email)[0].toUpperCase();
+        } catch (err) {
+            window.location.href = '/login';
+        }
+    }
+
+    // ============================
+    //  Events
+    // ============================
+
+    // Generate button (header + empty state)
+    document.getElementById('generateKeyBtn').addEventListener('click', openGenerateModal);
+    document.getElementById('emptyGenerateBtn').addEventListener('click', openGenerateModal);
+
+    // Modal close
+    document.getElementById('modalClose').addEventListener('click', () => {
+        closeGenerateModal();
+        // If key was generated, reload
+        if (document.getElementById('keyRevealBox').style.display !== 'none') {
+            loadKeys();
+        }
+    });
+
+    // Close modal on overlay click
+    document.getElementById('generateModal').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('generateModal')) {
+            closeGenerateModal();
+            if (document.getElementById('keyRevealBox').style.display !== 'none') {
+                loadKeys();
+            }
+        }
+    });
+
+    // Confirm revoke events
+    document.getElementById('confirmCancel').addEventListener('click', closeConfirmRevoke);
+    document.getElementById('confirmRevoke').addEventListener('click', revokeKey);
+    document.getElementById('confirmOverlay').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('confirmOverlay')) closeConfirmRevoke();
+    });
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        window.location.href = '/';
+    });
+
+    // Theme toggle
+    document.getElementById('themeToggle').addEventListener('click', () => {
+        window.dispatchEvent(new CustomEvent('theme-toggle'));
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (document.getElementById('confirmOverlay').classList.contains('open')) {
+                closeConfirmRevoke();
+            } else if (document.getElementById('generateModal').classList.contains('open')) {
+                closeGenerateModal();
+                if (document.getElementById('keyRevealBox').style.display !== 'none') {
+                    loadKeys();
+                }
+            }
+        }
+    });
+
+    // Mobile sidebar
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    document.getElementById('mobileToggle').addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+        sidebarOverlay.classList.toggle('open');
+    });
+    sidebarOverlay.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        sidebarOverlay.classList.remove('open');
+    });
+
+    // ============================
+    //  Init
+    // ============================
+    document.addEventListener('DOMContentLoaded', () => {
+        loadUser();
+        loadKeys();
+    });
+    </script>
+</body>
+</html>

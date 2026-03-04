@@ -1,0 +1,1670 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Servidores MCP — Polsia ES</title>
+    <script src="/theme.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #111118;
+            --bg-card: #16161f;
+            --border: #1e1e2a;
+            --text-primary: #e8e8ed;
+            --text-secondary: #8888a0;
+            --text-dim: #55556a;
+            --accent: #00e599;
+            --accent-dim: #00e59920;
+            --amber: #ffb800;
+            --red: #ff4466;
+            --blue: #4488ff;
+            --purple: #aa66ff;
+            --sidebar-width: 260px;
+        }
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* Layout */
+        .app-layout { display: flex; min-height: 100vh; }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0; left: 0; bottom: 0;
+            z-index: 10;
+            transition: transform 0.3s;
+        }
+        .sidebar-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .sidebar-logo { font-weight: 700; font-size: 18px; letter-spacing: -0.5px; }
+        .sidebar-logo span { color: var(--accent); }
+        .sidebar-status {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .sidebar-status::before {
+            content: '';
+            width: 5px; height: 5px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        .sidebar-nav { flex: 1; padding: 16px 12px; overflow-y: auto; }
+        .nav-section { margin-bottom: 24px; }
+        .nav-section-title {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-dim);
+            padding: 0 12px;
+            margin-bottom: 8px;
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.15s;
+            cursor: pointer;
+        }
+        .nav-item:hover { background: var(--bg-card); color: var(--text-primary); }
+        .nav-item.active { background: var(--accent-dim); color: var(--accent); }
+        .nav-item .icon { width: 20px; text-align: center; font-size: 16px; }
+
+        .sidebar-footer { padding: 16px; border-top: 1px solid var(--border); }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .user-info:hover { background: var(--bg-card); }
+        .user-avatar {
+            width: 34px; height: 34px;
+            border-radius: 8px;
+            background: var(--accent-dim);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .user-details { flex: 1; min-width: 0; }
+        .user-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .user-email { font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .logout-btn {
+            background: none; border: none; color: var(--text-dim);
+            cursor: pointer; font-size: 16px; padding: 4px; border-radius: 4px;
+            transition: all 0.15s;
+        }
+        .logout-btn:hover { color: var(--red); background: #ff446615; }
+
+        /* Main content */
+        .main-content { flex: 1; margin-left: var(--sidebar-width); }
+        .main-header {
+            padding: 20px 32px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-primary);
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+        .main-header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.3px; }
+        .header-actions { display: flex; gap: 12px; align-items: center; }
+        .header-btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 500;
+            font-size: 13px;
+            text-decoration: none;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .header-btn:hover { border-color: var(--text-dim); color: var(--text-primary); }
+        .header-btn.primary {
+            background: var(--accent);
+            color: var(--bg-primary);
+            border-color: var(--accent);
+            font-weight: 600;
+        }
+        .header-btn.primary:hover { background: #00cc88; }
+
+        .main-body { padding: 32px; }
+
+        /* Stats row */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 32px;
+        }
+        .stat-card { background: var(--bg-secondary); padding: 24px; }
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 32px;
+            font-weight: 700;
+        }
+        .stat-value.green { color: var(--accent); }
+        .stat-value.amber { color: var(--amber); }
+        .stat-value.blue { color: var(--blue); }
+        .stat-value.red { color: var(--red); }
+
+        /* Filter bar */
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .filter-bar select,
+        .filter-bar input[type="text"] {
+            padding: 8px 14px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .filter-bar select:focus,
+        .filter-bar input[type="text"]:focus {
+            border-color: var(--accent);
+        }
+        .filter-bar input[type="text"] {
+            flex: 1;
+            min-width: 200px;
+            max-width: 320px;
+        }
+
+        /* Server cards grid */
+        .servers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 20px;
+        }
+
+        /* Server card */
+        .server-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            transition: all 0.2s;
+            cursor: pointer;
+            position: relative;
+        }
+        .server-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+        .server-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            gap: 12px;
+        }
+        .server-card-title {
+            font-size: 18px;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: -0.3px;
+            word-break: break-all;
+        }
+        .server-card-badges {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+            align-items: center;
+        }
+        .server-card-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin-bottom: 16px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .server-card-meta {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .meta-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            padding: 3px 10px;
+            border-radius: 100px;
+            background: var(--bg-secondary);
+            color: var(--text-dim);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .meta-tag.transport {
+            background: rgba(68, 136, 255, 0.12);
+            color: var(--blue);
+        }
+        .meta-tag.tools {
+            background: var(--accent-dim);
+            color: var(--accent);
+        }
+        .meta-tag.oauth {
+            background: rgba(255, 184, 0, 0.12);
+            color: var(--amber);
+        }
+
+        /* Health status dot */
+        .health-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+        .health-dot.healthy { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+        .health-dot.degraded { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+        .health-dot.down { background: var(--red); box-shadow: 0 0 6px var(--red); }
+        .health-dot.unknown { background: var(--text-dim); }
+
+        /* Status badge */
+        .status-badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 100px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .status-badge.active { background: var(--accent-dim); color: var(--accent); }
+        .status-badge.inactive { background: rgba(255, 68, 102, 0.12); color: var(--red); }
+
+        /* Toggle switch */
+        .toggle-switch {
+            position: relative;
+            width: 38px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+            position: absolute;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            transition: all 0.2s;
+        }
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            left: 2px;
+            bottom: 2px;
+            background: var(--text-dim);
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+        .toggle-switch input:checked + .toggle-slider {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+        }
+        .toggle-switch input:checked + .toggle-slider::before {
+            transform: translateX(18px);
+            background: var(--accent);
+        }
+
+        /* Mapped agents badges */
+        .mapped-agents {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+        .agent-badge {
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .agent-badge.marketing { background: rgba(0, 229, 153, 0.12); color: var(--accent); }
+        .agent-badge.sales, .agent-badge.ventas { background: rgba(255, 184, 0, 0.12); color: var(--amber); }
+        .agent-badge.support, .agent-badge.soporte { background: rgba(68, 136, 255, 0.12); color: var(--blue); }
+        .agent-badge.engineering, .agent-badge.ingenieria { background: rgba(170, 102, 255, 0.12); color: var(--purple); }
+        .agent-badge.default { background: var(--bg-secondary); color: var(--text-secondary); }
+        .mapped-agents-empty {
+            font-size: 12px;
+            color: var(--text-dim);
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            max-width: 860px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 0;
+        }
+        .modal-box-header {
+            padding: 24px 28px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            background: var(--bg-card);
+            z-index: 2;
+            border-radius: 16px 16px 0 0;
+        }
+        .modal-box-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+        }
+        .modal-close {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 6px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.15s;
+        }
+        .modal-close:hover { background: var(--bg-primary); color: var(--text-primary); }
+        .modal-box-body { padding: 28px; }
+
+        /* Detail view sections */
+        .detail-section {
+            margin-bottom: 28px;
+        }
+        .detail-section:last-child { margin-bottom: 0; }
+        .detail-section-title {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+            margin-bottom: 14px;
+        }
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .detail-field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .detail-field.full { grid-column: 1 / -1; }
+        .detail-label {
+            font-size: 11px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .detail-value {
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+        .detail-value.mono {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+        }
+        .detail-value a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+        .detail-value a:hover { text-decoration: underline; }
+
+        /* Tools list in detail */
+        .tools-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .tool-tag {
+            padding: 5px 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+            transition: all 0.15s;
+        }
+        .tool-tag:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* Agent mapping section in detail */
+        .agent-mapping-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        .agent-mapping-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .agent-mapping-name {
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .agent-mapping-type {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            background: var(--bg-card);
+            color: var(--text-dim);
+        }
+        .agent-mapping-required {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: rgba(255, 184, 0, 0.12);
+            color: var(--amber);
+        }
+        .remove-agent-btn {
+            background: none;
+            border: 1px solid transparent;
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 16px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: all 0.15s;
+        }
+        .remove-agent-btn:hover {
+            color: var(--red);
+            background: rgba(255, 68, 102, 0.1);
+            border-color: rgba(255, 68, 102, 0.2);
+        }
+
+        /* Add agent row */
+        .add-agent-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .add-agent-row select {
+            flex: 1;
+            padding: 8px 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            outline: none;
+        }
+        .add-agent-row select:focus { border-color: var(--accent); }
+        .add-agent-btn {
+            padding: 8px 18px;
+            background: var(--accent);
+            color: var(--bg-primary);
+            border: none;
+            border-radius: 8px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+            white-space: nowrap;
+        }
+        .add-agent-btn:hover { background: #00cc88; }
+        .add-agent-btn:disabled {
+            background: var(--border);
+            color: var(--text-dim);
+            cursor: not-allowed;
+        }
+
+        /* Detail action buttons */
+        .detail-actions {
+            display: flex;
+            gap: 10px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+        .detail-actions .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            transition: all 0.15s;
+        }
+        .detail-actions .btn-edit {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+        .detail-actions .btn-edit:hover { border-color: var(--accent); color: var(--accent); }
+        .detail-actions .btn-deactivate {
+            background: transparent;
+            color: var(--red);
+            border-color: rgba(255, 68, 102, 0.3);
+            margin-left: auto;
+        }
+        .detail-actions .btn-deactivate:hover { background: rgba(255, 68, 102, 0.1); }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .form-group input[type="text"],
+        .form-group input[type="url"],
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus { border-color: var(--accent); }
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        .form-group .hint {
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .form-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+        .form-checkbox input[type="checkbox"] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--bg-secondary);
+            cursor: pointer;
+            position: relative;
+            flex-shrink: 0;
+            transition: all 0.15s;
+        }
+        .form-checkbox input[type="checkbox"]:checked {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+        .form-checkbox input[type="checkbox"]:checked::after {
+            content: '';
+            position: absolute;
+            left: 5px;
+            top: 2px;
+            width: 5px;
+            height: 9px;
+            border: solid var(--bg-primary);
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+        .form-checkbox span {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            margin-top: 8px;
+        }
+        .form-actions .btn {
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            border: 1px solid var(--border);
+        }
+        .form-actions .btn-cancel {
+            background: transparent;
+            color: var(--text-secondary);
+        }
+        .form-actions .btn-cancel:hover { color: var(--text-primary); border-color: var(--text-dim); }
+        .form-actions .btn-submit {
+            background: var(--accent);
+            color: var(--bg-primary);
+            border-color: var(--accent);
+        }
+        .form-actions .btn-submit:hover { background: #00cc88; }
+        .form-actions .btn-submit:disabled {
+            background: var(--border);
+            color: var(--text-dim);
+            border-color: var(--border);
+            cursor: not-allowed;
+        }
+
+        /* Loading & empty */
+        .loading-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-dim);
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+        .empty-state .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.4; }
+        .empty-state h3 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+        .empty-state p { color: var(--text-dim); font-size: 14px; max-width: 360px; margin: 0 auto; line-height: 1.6; }
+
+        /* Toast notification */
+        .toast-container {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .toast {
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            animation: toastIn 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            max-width: 400px;
+        }
+        .toast.success { border-color: var(--accent); }
+        .toast.success::before { content: ''; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; flex-shrink: 0; }
+        .toast.error { border-color: var(--red); }
+        .toast.error::before { content: ''; width: 6px; height: 6px; background: var(--red); border-radius: 50%; flex-shrink: 0; }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Mobile toggle */
+        .mobile-toggle {
+            display: none;
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 20;
+            width: 40px; height: 40px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 20px;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+        }
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9;
+        }
+
+        /* Config display */
+        .config-block {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .servers-grid { grid-template-columns: 1fr; }
+            .form-row { grid-template-columns: 1fr; }
+            .detail-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 768px) {
+            .mobile-toggle { display: flex; }
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            .main-content { margin-left: 0; }
+            .main-header { padding-left: 64px; }
+            .main-body { padding: 20px; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .modal-overlay { padding: 16px; }
+            .modal-box-body { padding: 20px; }
+        }
+        @media (max-width: 480px) {
+            .stats-grid { grid-template-columns: 1fr; }
+            .servers-grid { grid-template-columns: 1fr; }
+            .header-actions { gap: 6px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Mobile toggle -->
+    <button class="mobile-toggle" id="mobileToggle">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Toast container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">polsia<span>.es</span></div>
+                <div class="sidebar-status">activo</div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Principal</div>
+                    <a href="/dashboard" class="nav-item">
+                        <span class="icon">&#x1F4CA;</span>
+                        Dashboard
+                    </a>
+                    <a href="/tareas" class="nav-item">
+                        <span class="icon">&#x1F4CB;</span>
+                        Tareas
+                    </a>
+                    <a href="/agents" class="nav-item">
+                        <span class="icon">&#x1F916;</span>
+                        Agentes
+                    </a>
+                    <a href="/skills" class="nav-item">
+                        <span class="icon">&#x26A1;</span>
+                        Skills
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Infraestructura</div>
+                    <a href="/mcp" class="nav-item active">
+                        <span class="icon">&#x1F50C;</span>
+                        Servidores MCP
+                    </a>
+                    <a href="/claves-api" class="nav-item">
+                        <span class="icon">&#x1F511;</span>
+                        Claves API
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Cuenta</div>
+                    <a href="/facturacion" class="nav-item">
+                        <span class="icon">&#x1F4B3;</span>
+                        Facturaci&oacute;n
+                    </a>
+                    <a href="/api/docs" class="nav-item">
+                        <span class="icon">&#x1F4D6;</span>
+                        Documentaci&oacute;n API
+                    </a>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar">?</div>
+                    <div class="user-details">
+                        <div class="user-name" id="userName">Cargando...</div>
+                        <div class="user-email" id="userEmail"></div>
+                    </div>
+                    <button class="logout-btn" id="logoutBtn" title="Cerrar sesi&oacute;n">&#x23FB;</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="main-header">
+                <h1>Servidores MCP</h1>
+                <div class="header-actions">
+                    <button class="theme-toggle header-btn" id="themeToggle" title="Cambiar tema">&#x1F319;</button>
+                    <button class="header-btn primary" id="registerBtn">+ Registrar Servidor</button>
+                </div>
+            </div>
+
+            <div class="main-body">
+                <!-- Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Servidores</div>
+                        <div class="stat-value green" id="statTotal">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Activos</div>
+                        <div class="stat-value blue" id="statActive">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Herramientas</div>
+                        <div class="stat-value amber" id="statTools">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">OAuth Requerido</div>
+                        <div class="stat-value red" id="statOAuth">-</div>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="filter-bar">
+                    <input type="text" id="searchInput" placeholder="Buscar servidores...">
+                    <select id="filterTransport">
+                        <option value="">Todos los transportes</option>
+                        <option value="stdio">stdio</option>
+                        <option value="sse">sse</option>
+                        <option value="http">http</option>
+                    </select>
+                    <select id="filterStatus">
+                        <option value="">Todos los estados</option>
+                        <option value="active">Activos</option>
+                        <option value="inactive">Inactivos</option>
+                    </select>
+                </div>
+
+                <!-- Loading -->
+                <div id="loadingState" class="loading-state">
+                    <div class="spinner"></div>
+                    <div>Cargando servidores MCP...</div>
+                </div>
+
+                <!-- Server cards -->
+                <div id="serversGrid" class="servers-grid" style="display: none;"></div>
+
+                <!-- Empty state -->
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <div class="empty-icon">&#x1F50C;</div>
+                    <h3>Sin servidores MCP</h3>
+                    <p>No se encontraron servidores que coincidan con los filtros seleccionados. Registra un nuevo servidor para comenzar.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Detail Modal -->
+    <div class="modal-overlay" id="detailModal">
+        <div class="modal-box">
+            <div class="modal-box-header">
+                <h2 id="detailTitle">-</h2>
+                <button class="modal-close" onclick="closeDetail()">Cerrar</button>
+            </div>
+            <div class="modal-box-body" id="detailBody">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Register / Edit Modal -->
+    <div class="modal-overlay" id="formModal">
+        <div class="modal-box" style="max-width: 680px;">
+            <div class="modal-box-header">
+                <h2 id="formTitle">Registrar Servidor MCP</h2>
+                <button class="modal-close" onclick="closeForm()">Cerrar</button>
+            </div>
+            <div class="modal-box-body">
+                <form id="serverForm" autocomplete="off">
+                    <input type="hidden" id="formId" value="">
+
+                    <div class="form-group">
+                        <label for="formName">Nombre</label>
+                        <input type="text" id="formName" placeholder="ej: brave_search, stripe, my_custom_server" required>
+                        <div class="hint">Identificador &uacute;nico del servidor. Se normalizar&aacute; autom&aacute;ticamente.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="formDescription">Descripci&oacute;n</label>
+                        <input type="text" id="formDescription" placeholder="Breve descripci&oacute;n del servidor y sus funciones">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="formUrl">URL del Servidor</label>
+                            <input type="url" id="formUrl" placeholder="https://mcp.example.com/sse">
+                            <div class="hint">Requerido para transportes SSE y HTTP.</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="formTransport">Tipo de Transporte</label>
+                            <select id="formTransport">
+                                <option value="stdio">stdio</option>
+                                <option value="sse">sse</option>
+                                <option value="http">http</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="formTools">Herramientas (JSON)</label>
+                        <textarea id="formTools" placeholder='["tool_name_1", "tool_name_2", "tool_name_3"]'></textarea>
+                        <div class="hint">Array JSON de nombres de herramientas que expone el servidor.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-checkbox">
+                            <input type="checkbox" id="formOAuth">
+                            <span>Requiere autenticaci&oacute;n OAuth</span>
+                        </label>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-cancel" onclick="closeForm()">Cancelar</button>
+                        <button type="submit" class="btn btn-submit" id="formSubmit">Registrar Servidor</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ====== STATE ======
+    let mcpServers = [];
+    let allAgents = [];
+    let currentDetailId = null;
+
+    // ====== UTILITIES ======
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-8px)';
+            toast.style.transition = 'all 0.3s';
+            setTimeout(() => toast.remove(), 300);
+        }, 3500);
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    function getAgentBadgeClass(type) {
+        if (!type) return 'default';
+        const t = type.toLowerCase();
+        if (t.includes('marketing')) return 'marketing';
+        if (t.includes('sales') || t.includes('ventas')) return 'sales';
+        if (t.includes('support') || t.includes('soporte')) return 'support';
+        if (t.includes('engineering') || t.includes('ingenieria') || t.includes('dev')) return 'engineering';
+        return 'default';
+    }
+
+    function getHealthLabel(status) {
+        const labels = {
+            healthy: 'Saludable',
+            degraded: 'Degradado',
+            down: 'Ca\u00eddo',
+            unknown: 'Desconocido'
+        };
+        return labels[status] || labels.unknown;
+    }
+
+    function parseToolsArray(tools) {
+        if (Array.isArray(tools)) return tools;
+        if (typeof tools === 'string') {
+            try { return JSON.parse(tools); } catch { return []; }
+        }
+        return [];
+    }
+
+    // ====== API ======
+    async function apiFetch(url, options = {}) {
+        const res = await fetch(url, {
+            headers: { 'Content-Type': 'application/json', ...options.headers },
+            ...options
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+        return data;
+    }
+
+    // ====== LOAD DATA ======
+    async function loadServers() {
+        try {
+            const data = await apiFetch('/api/mcp');
+            mcpServers = data.mcp_servers || [];
+            updateStats();
+            renderServers();
+            document.getElementById('loadingState').style.display = 'none';
+        } catch (err) {
+            console.error('Error loading MCP servers:', err);
+            document.getElementById('loadingState').innerHTML =
+                '<div style="color: var(--red);">Error al cargar servidores MCP</div>';
+        }
+    }
+
+    async function loadAgents() {
+        try {
+            const data = await apiFetch('/api/agents');
+            allAgents = data.agents || [];
+        } catch (err) {
+            console.error('Error loading agents:', err);
+            allAgents = [];
+        }
+    }
+
+    async function loadUser() {
+        try {
+            const res = await fetch('/api/auth/me');
+            if (!res.ok) { window.location.href = '/login'; return; }
+            const { user } = await res.json();
+            document.getElementById('userName').textContent = user.name || user.email.split('@')[0];
+            document.getElementById('userEmail').textContent = user.email;
+            document.getElementById('userAvatar').textContent = (user.name || user.email)[0].toUpperCase();
+        } catch {
+            window.location.href = '/login';
+        }
+    }
+
+    // ====== STATS ======
+    function updateStats() {
+        const total = mcpServers.length;
+        const active = mcpServers.filter(s => s.is_active).length;
+        const tools = mcpServers.reduce((sum, s) => sum + parseToolsArray(s.tools).length, 0);
+        const oauth = mcpServers.filter(s => s.oauth_required).length;
+
+        document.getElementById('statTotal').textContent = total;
+        document.getElementById('statActive').textContent = active;
+        document.getElementById('statTools').textContent = tools;
+        document.getElementById('statOAuth').textContent = oauth;
+    }
+
+    // ====== RENDER SERVERS ======
+    function getFilteredServers() {
+        const search = document.getElementById('searchInput').value.toLowerCase().trim();
+        const transport = document.getElementById('filterTransport').value;
+        const status = document.getElementById('filterStatus').value;
+
+        return mcpServers.filter(s => {
+            if (search && !s.name.toLowerCase().includes(search) && !(s.description || '').toLowerCase().includes(search)) return false;
+            if (transport && s.transport_type !== transport) return false;
+            if (status === 'active' && !s.is_active) return false;
+            if (status === 'inactive' && s.is_active) return false;
+            return true;
+        });
+    }
+
+    function renderServers() {
+        const filtered = getFilteredServers();
+        const grid = document.getElementById('serversGrid');
+        const empty = document.getElementById('emptyState');
+
+        if (filtered.length === 0) {
+            grid.style.display = 'none';
+            empty.style.display = 'block';
+            return;
+        }
+
+        empty.style.display = 'none';
+        grid.style.display = 'grid';
+
+        grid.innerHTML = filtered.map(server => {
+            const tools = parseToolsArray(server.tools);
+            const agents = server.mapped_agents || [];
+            const healthClass = server.health_status || 'unknown';
+
+            return `
+                <div class="server-card" onclick="openDetail(${server.id})">
+                    <div class="server-card-header">
+                        <div class="server-card-title">${escapeHtml(server.name)}</div>
+                        <div class="server-card-badges">
+                            <span class="health-dot ${escapeHtml(healthClass)}" title="${getHealthLabel(healthClass)}"></span>
+                            <span class="status-badge ${server.is_active ? 'active' : 'inactive'}">
+                                ${server.is_active ? 'ACTIVO' : 'INACTIVO'}
+                            </span>
+                            <label class="toggle-switch" onclick="event.stopPropagation()">
+                                <input type="checkbox" ${server.is_active ? 'checked' : ''} onchange="toggleServer(${server.id}, this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="server-card-desc">${escapeHtml(server.description) || 'Sin descripci\u00f3n'}</div>
+                    <div class="server-card-meta">
+                        <span class="meta-tag transport">${escapeHtml(server.transport_type || 'stdio')}</span>
+                        <span class="meta-tag tools">${tools.length} herramienta${tools.length !== 1 ? 's' : ''}</span>
+                        ${server.oauth_required ? '<span class="meta-tag oauth">OAuth</span>' : ''}
+                    </div>
+                    ${agents.length > 0 ? `
+                        <div class="mapped-agents">
+                            ${agents.map(a => `
+                                <span class="agent-badge ${getAgentBadgeClass(a.type)}">${escapeHtml(a.name)}</span>
+                            `).join('')}
+                        </div>
+                    ` : '<div class="mapped-agents-empty">Sin agentes mapeados</div>'}
+                </div>
+            `;
+        }).join('');
+    }
+
+    // ====== TOGGLE SERVER STATUS ======
+    async function toggleServer(id, active) {
+        try {
+            await apiFetch(`/api/mcp/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ is_active: active })
+            });
+            const server = mcpServers.find(s => s.id === id);
+            if (server) server.is_active = active;
+            updateStats();
+            renderServers();
+            showToast(active ? 'Servidor activado' : 'Servidor desactivado');
+        } catch (err) {
+            showToast(err.message, 'error');
+            renderServers();
+        }
+    }
+
+    // ====== DETAIL VIEW ======
+    async function openDetail(id) {
+        currentDetailId = id;
+        const modal = document.getElementById('detailModal');
+        const body = document.getElementById('detailBody');
+
+        body.innerHTML = '<div class="loading-state"><div class="spinner"></div><div>Cargando detalles...</div></div>';
+        modal.classList.add('active');
+
+        try {
+            const data = await apiFetch(`/api/mcp/${id}`);
+            const server = data.mcp_server;
+            const agents = data.mapped_agents || [];
+            const tools = parseToolsArray(server.tools);
+            const config = server.config || {};
+            const oauthConfig = server.oauth_config || {};
+            const healthClass = server.health_status || 'unknown';
+
+            document.getElementById('detailTitle').textContent = server.name;
+
+            let configStr = '{}';
+            try { configStr = JSON.stringify(typeof config === 'string' ? JSON.parse(config) : config, null, 2); } catch { configStr = String(config); }
+
+            body.innerHTML = `
+                <div class="detail-section">
+                    <div class="detail-section-title">Informaci&oacute;n General</div>
+                    <div class="detail-grid">
+                        <div class="detail-field">
+                            <div class="detail-label">Nombre</div>
+                            <div class="detail-value mono">${escapeHtml(server.name)}</div>
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-label">Estado</div>
+                            <div class="detail-value">
+                                <span class="status-badge ${server.is_active ? 'active' : 'inactive'}" style="font-size: 11px;">
+                                    ${server.is_active ? 'ACTIVO' : 'INACTIVO'}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="detail-field full">
+                            <div class="detail-label">Descripci&oacute;n</div>
+                            <div class="detail-value">${escapeHtml(server.description) || 'Sin descripci\u00f3n'}</div>
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-label">Transporte</div>
+                            <div class="detail-value"><span class="meta-tag transport">${escapeHtml(server.transport_type || 'stdio')}</span></div>
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-label">Salud</div>
+                            <div class="detail-value" style="display:flex;align-items:center;gap:8px;">
+                                <span class="health-dot ${escapeHtml(healthClass)}"></span>
+                                ${getHealthLabel(healthClass)}
+                            </div>
+                        </div>
+                        ${server.server_url ? `
+                        <div class="detail-field full">
+                            <div class="detail-label">URL del Servidor</div>
+                            <div class="detail-value mono"><a href="${escapeHtml(server.server_url)}" target="_blank" rel="noopener">${escapeHtml(server.server_url)}</a></div>
+                        </div>
+                        ` : ''}
+                        <div class="detail-field">
+                            <div class="detail-label">OAuth Requerido</div>
+                            <div class="detail-value">${server.oauth_required ? '<span class="meta-tag oauth">S\u00ed</span>' : '<span class="meta-tag">No</span>'}</div>
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-label">Creado</div>
+                            <div class="detail-value mono">${server.created_at ? new Date(server.created_at).toLocaleString('es-ES') : '-'}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-section-title">Herramientas (${tools.length})</div>
+                    ${tools.length > 0 ? `
+                        <div class="tools-list">
+                            ${tools.map(t => `<span class="tool-tag">${escapeHtml(typeof t === 'string' ? t : t.name || JSON.stringify(t))}</span>`).join('')}
+                        </div>
+                    ` : '<div style="color: var(--text-dim); font-size: 13px;">Sin herramientas registradas</div>'}
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-section-title">Configuraci&oacute;n</div>
+                    <div class="config-block">${escapeHtml(configStr)}</div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-section-title">Agentes Mapeados (${agents.length})</div>
+                    <div id="detailAgentsList">
+                        ${agents.length > 0 ? agents.map(a => `
+                            <div class="agent-mapping-row" id="agent-mapping-${a.id}">
+                                <div class="agent-mapping-info">
+                                    <span class="agent-badge ${getAgentBadgeClass(a.type)}">${escapeHtml(a.name)}</span>
+                                    <span class="agent-mapping-type">${escapeHtml(a.type || 'general')}</span>
+                                    ${a.is_required ? '<span class="agent-mapping-required">requerido</span>' : ''}
+                                </div>
+                                <button class="remove-agent-btn" onclick="removeAgentMapping(${id}, ${a.id})" title="Eliminar mapeo">&#x2715;</button>
+                            </div>
+                        `).join('') : '<div style="color: var(--text-dim); font-size: 13px; margin-bottom: 8px;">Sin agentes mapeados a este servidor</div>'}
+                    </div>
+                    <div class="add-agent-row">
+                        <select id="detailAgentSelect">
+                            <option value="">Seleccionar agente...</option>
+                            ${allAgents
+                                .filter(a => !agents.find(m => m.id === a.id))
+                                .map(a => `<option value="${a.id}">${escapeHtml(a.name)} (${escapeHtml(a.type || 'general')})</option>`)
+                                .join('')}
+                        </select>
+                        <button class="add-agent-btn" onclick="addAgentMapping(${id})" id="addAgentBtn">Asignar</button>
+                    </div>
+                </div>
+
+                <div class="detail-actions">
+                    <button class="btn btn-edit" onclick="openEditForm(${id})">Editar Servidor</button>
+                    <button class="btn btn-deactivate" onclick="deactivateServer(${id})">
+                        ${server.is_active ? 'Desactivar' : 'Activar'}
+                    </button>
+                </div>
+            `;
+        } catch (err) {
+            body.innerHTML = `<div style="color: var(--red); text-align: center; padding: 40px;">Error al cargar detalles: ${escapeHtml(err.message)}</div>`;
+        }
+    }
+
+    function closeDetail() {
+        document.getElementById('detailModal').classList.remove('active');
+        currentDetailId = null;
+    }
+
+    // ====== AGENT MAPPING ======
+    async function addAgentMapping(serverId) {
+        const select = document.getElementById('detailAgentSelect');
+        const agentId = parseInt(select.value);
+        if (!agentId) return;
+
+        const btn = document.getElementById('addAgentBtn');
+        btn.disabled = true;
+        btn.textContent = 'Asignando...';
+
+        try {
+            await apiFetch(`/api/mcp/${serverId}/agents`, {
+                method: 'POST',
+                body: JSON.stringify({ agent_id: agentId, is_required: false })
+            });
+            showToast('Agente mapeado correctamente');
+            await loadServers();
+            await openDetail(serverId);
+        } catch (err) {
+            showToast(err.message, 'error');
+            btn.disabled = false;
+            btn.textContent = 'Asignar';
+        }
+    }
+
+    async function removeAgentMapping(serverId, agentId) {
+        const row = document.getElementById(`agent-mapping-${agentId}`);
+        if (row) row.style.opacity = '0.4';
+
+        try {
+            await apiFetch(`/api/mcp/${serverId}/agents/${agentId}`, { method: 'DELETE' });
+            showToast('Mapeo eliminado');
+            await loadServers();
+            await openDetail(serverId);
+        } catch (err) {
+            showToast(err.message, 'error');
+            if (row) row.style.opacity = '1';
+        }
+    }
+
+    // ====== DEACTIVATE / ACTIVATE ======
+    async function deactivateServer(id) {
+        const server = mcpServers.find(s => s.id === id);
+        if (!server) return;
+
+        const newState = !server.is_active;
+        try {
+            await apiFetch(`/api/mcp/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ is_active: newState })
+            });
+            showToast(newState ? 'Servidor activado' : 'Servidor desactivado');
+            await loadServers();
+            closeDetail();
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    }
+
+    // ====== REGISTER / EDIT FORM ======
+    function openRegisterForm() {
+        document.getElementById('formId').value = '';
+        document.getElementById('formName').value = '';
+        document.getElementById('formName').disabled = false;
+        document.getElementById('formDescription').value = '';
+        document.getElementById('formUrl').value = '';
+        document.getElementById('formTransport').value = 'stdio';
+        document.getElementById('formTools').value = '';
+        document.getElementById('formOAuth').checked = false;
+        document.getElementById('formTitle').textContent = 'Registrar Servidor MCP';
+        document.getElementById('formSubmit').textContent = 'Registrar Servidor';
+        document.getElementById('formModal').classList.add('active');
+    }
+
+    async function openEditForm(id) {
+        closeDetail();
+        try {
+            const data = await apiFetch(`/api/mcp/${id}`);
+            const server = data.mcp_server;
+            const tools = parseToolsArray(server.tools);
+
+            document.getElementById('formId').value = server.id;
+            document.getElementById('formName').value = server.name;
+            document.getElementById('formName').disabled = true;
+            document.getElementById('formDescription').value = server.description || '';
+            document.getElementById('formUrl').value = server.server_url || '';
+            document.getElementById('formTransport').value = server.transport_type || 'stdio';
+            document.getElementById('formTools').value = tools.length > 0 ? JSON.stringify(tools, null, 2) : '';
+            document.getElementById('formOAuth').checked = server.oauth_required || false;
+            document.getElementById('formTitle').textContent = 'Editar Servidor MCP';
+            document.getElementById('formSubmit').textContent = 'Guardar Cambios';
+            document.getElementById('formModal').classList.add('active');
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    }
+
+    function closeForm() {
+        document.getElementById('formModal').classList.remove('active');
+    }
+
+    async function handleFormSubmit(e) {
+        e.preventDefault();
+        const submitBtn = document.getElementById('formSubmit');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Guardando...';
+
+        const id = document.getElementById('formId').value;
+        const isEdit = !!id;
+
+        let tools = [];
+        const toolsRaw = document.getElementById('formTools').value.trim();
+        if (toolsRaw) {
+            try {
+                tools = JSON.parse(toolsRaw);
+                if (!Array.isArray(tools)) {
+                    showToast('El campo herramientas debe ser un array JSON v\u00e1lido', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = isEdit ? 'Guardar Cambios' : 'Registrar Servidor';
+                    return;
+                }
+            } catch {
+                showToast('JSON inv\u00e1lido en el campo de herramientas', 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = isEdit ? 'Guardar Cambios' : 'Registrar Servidor';
+                return;
+            }
+        }
+
+        const payload = {
+            description: document.getElementById('formDescription').value.trim(),
+            server_url: document.getElementById('formUrl').value.trim() || null,
+            transport_type: document.getElementById('formTransport').value,
+            tools: tools,
+            oauth_required: document.getElementById('formOAuth').checked
+        };
+
+        if (!isEdit) {
+            payload.name = document.getElementById('formName').value.trim();
+            if (!payload.name) {
+                showToast('El nombre es requerido', 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Registrar Servidor';
+                return;
+            }
+        }
+
+        try {
+            if (isEdit) {
+                await apiFetch(`/api/mcp/${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(payload)
+                });
+                showToast('Servidor actualizado correctamente');
+            } else {
+                await apiFetch('/api/mcp', {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                showToast('Servidor registrado correctamente');
+            }
+            closeForm();
+            await loadServers();
+        } catch (err) {
+            showToast(err.message, 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = isEdit ? 'Guardar Cambios' : 'Registrar Servidor';
+        }
+    }
+
+    // ====== EVENT LISTENERS ======
+
+    // Sidebar mobile toggle
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    document.getElementById('mobileToggle').addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('open');
+    });
+    overlay.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('open');
+    });
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        window.location.href = '/';
+    });
+
+    // Register button
+    document.getElementById('registerBtn').addEventListener('click', openRegisterForm);
+
+    // Form submit
+    document.getElementById('serverForm').addEventListener('submit', handleFormSubmit);
+
+    // Search and filters
+    document.getElementById('searchInput').addEventListener('input', renderServers);
+    document.getElementById('filterTransport').addEventListener('change', renderServers);
+    document.getElementById('filterStatus').addEventListener('change', renderServers);
+
+    // Close modals on overlay click
+    document.getElementById('detailModal').addEventListener('click', (e) => {
+        if (e.target.id === 'detailModal') closeDetail();
+    });
+    document.getElementById('formModal').addEventListener('click', (e) => {
+        if (e.target.id === 'formModal') closeForm();
+    });
+
+    // Close modals on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (document.getElementById('formModal').classList.contains('active')) {
+                closeForm();
+            } else if (document.getElementById('detailModal').classList.contains('active')) {
+                closeDetail();
+            }
+        }
+    });
+
+    // ====== INIT ======
+    document.addEventListener('DOMContentLoaded', () => {
+        loadUser();
+        Promise.all([loadServers(), loadAgents()]);
+    });
+    </script>
+</body>
+</html>

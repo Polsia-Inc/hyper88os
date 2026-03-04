@@ -70,9 +70,14 @@ app.use(session({
   }
 }));
 
-// Auth middleware
+// Auth middleware (session-based)
 function requireAuth(req, res, next) {
   if (req.session && req.session.userId) {
+    return next();
+  }
+  // Check API key auth
+  if (req.apiKeyUser) {
+    req.user = req.apiKeyUser;
     return next();
   }
   if (req.headers.accept?.includes('application/json')) {
@@ -81,8 +86,108 @@ function requireAuth(req, res, next) {
   res.redirect('/login');
 }
 
+// API key authentication middleware
+async function apiKeyAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer pk_')) {
+    return next();
+  }
+
+  const apiKey = authHeader.replace('Bearer ', '');
+  try {
+    const keyHash = crypto.createHash('sha256').update(apiKey).digest('hex');
+    const result = await pool.query(
+      `SELECT ak.*, u.id as uid, u.email, u.name, u.role, u.locale, u.theme
+       FROM api_keys ak JOIN users u ON ak.user_id = u.id
+       WHERE ak.key_hash = $1 AND ak.is_active = true
+       AND (ak.expires_at IS NULL OR ak.expires_at > NOW())`,
+      [keyHash]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Clave API inválida o expirada' });
+    }
+
+    const keyRow = result.rows[0];
+
+    // Rate limiting check
+    const windowStart = new Date();
+    windowStart.setSeconds(0, 0);
+
+    const rateResult = await pool.query(
+      `INSERT INTO api_rate_limits (api_key_id, window_start, request_count)
+       VALUES ($1, $2, 1)
+       ON CONFLICT (api_key_id, window_start)
+       DO UPDATE SET request_count = api_rate_limits.request_count + 1
+       RETURNING request_count`,
+      [keyRow.id, windowStart]
+    );
+
+    if (rateResult.rows[0].request_count > keyRow.rate_limit_per_minute) {
+      return res.status(429).json({
+        error: 'Límite de tasa excedido',
+        limit: keyRow.rate_limit_per_minute,
+        retry_after: 60
+      });
+    }
+
+    // Update last used
+    pool.query('UPDATE api_keys SET last_used_at = NOW() WHERE id = $1', [keyRow.id]).catch(() => {});
+
+    req.apiKeyUser = {
+      id: keyRow.uid,
+      email: keyRow.email,
+      name: keyRow.name,
+      role: keyRow.role,
+      locale: keyRow.locale,
+      theme: keyRow.theme
+    };
+    req.apiKeyId = keyRow.id;
+    req.apiKeyScopes = keyRow.scopes || ['read', 'write'];
+  } catch (err) {
+    console.error('API key auth error:', err.message);
+  }
+  next();
+}
+
+// Scope check middleware factory
+function requireScope(scope) {
+  return (req, res, next) => {
+    if (req.apiKeyId && !req.apiKeyScopes?.includes(scope)) {
+      return res.status(403).json({ error: `Scope requerido: ${scope}` });
+    }
+    next();
+  };
+}
+
+// Consistent error response helper
+function apiError(res, status, message, details = null) {
+  const response = {
+    ok: false,
+    error: message,
+    timestamp: new Date().toISOString()
+  };
+  if (details) response.details = details;
+  return res.status(status).json(response);
+}
+
+function apiSuccess(res, data, status = 200) {
+  return res.status(status).json({
+    ok: true,
+    ...data,
+    timestamp: new Date().toISOString()
+  });
+}
+
+// API key auth (before user loading)
+app.use(apiKeyAuth);
+
 // Make user data available to all requests
 app.use(async (req, res, next) => {
+  if (req.apiKeyUser) {
+    req.user = req.apiKeyUser;
+    return next();
+  }
   if (req.session && req.session.userId) {
     try {
       const result = await pool.query('SELECT id, email, name, role, locale, theme, referral_code FROM users WHERE id = $1', [req.session.userId]);
@@ -1041,6 +1146,782 @@ app.post('/api/agents/find-best', requireAuth, async (req, res) => {
   }
 });
 
+// ====== API KEY MANAGEMENT ======
+
+// Generate new API key
+app.post('/api/keys', requireAuth, async (req, res) => {
+  try {
+    const { name, scopes, rate_limit_per_minute, expires_in_days } = req.body;
+
+    // Generate a secure API key
+    const rawKey = 'pk_' + crypto.randomBytes(32).toString('hex');
+    const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
+    const keyPrefix = rawKey.substring(0, 10);
+
+    let expiresAt = null;
+    if (expires_in_days) {
+      expiresAt = new Date(Date.now() + expires_in_days * 24 * 60 * 60 * 1000);
+    }
+
+    const result = await pool.query(
+      `INSERT INTO api_keys (user_id, key_hash, key_prefix, name, scopes, rate_limit_per_minute, expires_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, key_prefix, name, scopes, rate_limit_per_minute, expires_at, created_at`,
+      [
+        req.user.id, keyHash, keyPrefix,
+        name || 'default',
+        JSON.stringify(scopes || ['read', 'write']),
+        rate_limit_per_minute || 60,
+        expiresAt
+      ]
+    );
+
+    // Return the full key ONLY on creation — never shown again
+    apiSuccess(res, {
+      api_key: rawKey,
+      key_info: result.rows[0],
+      warning: 'Guarda esta clave. No se mostrará de nuevo.'
+    }, 201);
+  } catch (err) {
+    console.error('Create API key error:', err.message);
+    apiError(res, 500, 'Error al crear clave API');
+  }
+});
+
+// List API keys
+app.get('/api/keys', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, key_prefix, name, scopes, rate_limit_per_minute, last_used_at, expires_at, is_active, created_at
+       FROM api_keys WHERE user_id = $1 ORDER BY created_at DESC`,
+      [req.user.id]
+    );
+    apiSuccess(res, { keys: result.rows });
+  } catch (err) {
+    apiError(res, 500, 'Error al cargar claves API');
+  }
+});
+
+// Revoke API key
+app.delete('/api/keys/:id', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'UPDATE api_keys SET is_active = false, updated_at = NOW() WHERE id = $1 AND user_id = $2 RETURNING id, key_prefix',
+      [req.params.id, req.user.id]
+    );
+    if (result.rows.length === 0) {
+      return apiError(res, 404, 'Clave API no encontrada');
+    }
+    apiSuccess(res, { revoked: result.rows[0] });
+  } catch (err) {
+    apiError(res, 500, 'Error al revocar clave API');
+  }
+});
+
+// ====== SKILLS API ======
+
+// Search/list skills
+app.get('/api/skills', requireAuth, async (req, res) => {
+  try {
+    const { q, agent_type, active, limit = 50, offset = 0 } = req.query;
+
+    let query = 'SELECT id, name, summary, keywords, agent_types, version, is_active, created_at, updated_at FROM skills WHERE 1=1';
+    const params = [];
+    let paramIdx = 1;
+
+    if (q) {
+      query += ` AND (name ILIKE $${paramIdx} OR summary ILIKE $${paramIdx} OR keywords::text ILIKE $${paramIdx})`;
+      params.push(`%${q}%`);
+      paramIdx++;
+    }
+
+    if (agent_type) {
+      query += ` AND agent_types @> $${paramIdx}::jsonb`;
+      params.push(JSON.stringify([agent_type]));
+      paramIdx++;
+    }
+
+    if (active !== undefined) {
+      query += ` AND is_active = $${paramIdx}`;
+      params.push(active === 'true');
+      paramIdx++;
+    }
+
+    query += ` ORDER BY name ASC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    params.push(parseInt(limit), parseInt(offset));
+
+    const result = await pool.query(query, params);
+
+    // Get total count
+    let countQuery = 'SELECT COUNT(*)::int as total FROM skills WHERE 1=1';
+    const countParams = [];
+    let cIdx = 1;
+    if (q) {
+      countQuery += ` AND (name ILIKE $${cIdx} OR summary ILIKE $${cIdx} OR keywords::text ILIKE $${cIdx})`;
+      countParams.push(`%${q}%`);
+      cIdx++;
+    }
+    if (agent_type) {
+      countQuery += ` AND agent_types @> $${cIdx}::jsonb`;
+      countParams.push(JSON.stringify([agent_type]));
+      cIdx++;
+    }
+    if (active !== undefined) {
+      countQuery += ` AND is_active = $${cIdx}`;
+      countParams.push(active === 'true');
+    }
+
+    const countResult = await pool.query(countQuery, countParams);
+
+    apiSuccess(res, {
+      skills: result.rows,
+      total: countResult.rows[0].total,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+  } catch (err) {
+    console.error('List skills error:', err.message);
+    apiError(res, 500, 'Error al buscar skills');
+  }
+});
+
+// Get single skill (with full content)
+app.get('/api/skills/:id', requireAuth, async (req, res) => {
+  try {
+    const isNumeric = /^\d+$/.test(req.params.id);
+    const query = isNumeric
+      ? 'SELECT * FROM skills WHERE id = $1'
+      : 'SELECT * FROM skills WHERE name = $1';
+
+    const result = await pool.query(query, [req.params.id]);
+    if (result.rows.length === 0) {
+      return apiError(res, 404, 'Skill no encontrado');
+    }
+    apiSuccess(res, { skill: result.rows[0] });
+  } catch (err) {
+    apiError(res, 500, 'Error al cargar skill');
+  }
+});
+
+// Create skill
+app.post('/api/skills', requireAuth, requireScope('write'), async (req, res) => {
+  try {
+    const { name, summary, content, keywords, agent_types } = req.body;
+
+    if (!name || !content) {
+      return apiError(res, 400, 'Nombre y contenido son requeridos');
+    }
+
+    const result = await pool.query(
+      `INSERT INTO skills (name, summary, content, keywords, agent_types, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [
+        name.trim().toLowerCase().replace(/\s+/g, '-'),
+        summary || '',
+        content,
+        JSON.stringify(keywords || []),
+        JSON.stringify(agent_types || []),
+        req.user.id
+      ]
+    );
+
+    apiSuccess(res, { skill: result.rows[0] }, 201);
+  } catch (err) {
+    if (err.code === '23505') {
+      return apiError(res, 409, 'Ya existe un skill con ese nombre');
+    }
+    console.error('Create skill error:', err.message);
+    apiError(res, 500, 'Error al crear skill');
+  }
+});
+
+// Update skill
+app.put('/api/skills/:id', requireAuth, requireScope('write'), async (req, res) => {
+  try {
+    const { summary, content, keywords, agent_types } = req.body;
+
+    const existing = await pool.query('SELECT * FROM skills WHERE id = $1', [req.params.id]);
+    if (existing.rows.length === 0) {
+      return apiError(res, 404, 'Skill no encontrado');
+    }
+
+    const old = existing.rows[0];
+    const result = await pool.query(
+      `UPDATE skills SET
+        summary = $1, content = $2, keywords = $3, agent_types = $4,
+        version = version + 1, updated_at = NOW()
+       WHERE id = $5 RETURNING *`,
+      [
+        summary !== undefined ? summary : old.summary,
+        content !== undefined ? content : old.content,
+        JSON.stringify(keywords || old.keywords),
+        JSON.stringify(agent_types || old.agent_types),
+        req.params.id
+      ]
+    );
+
+    apiSuccess(res, { skill: result.rows[0] });
+  } catch (err) {
+    console.error('Update skill error:', err.message);
+    apiError(res, 500, 'Error al actualizar skill');
+  }
+});
+
+// Delete skill (soft delete)
+app.delete('/api/skills/:id', requireAuth, requireScope('write'), async (req, res) => {
+  try {
+    const result = await pool.query(
+      'UPDATE skills SET is_active = false, updated_at = NOW() WHERE id = $1 RETURNING id, name',
+      [req.params.id]
+    );
+    if (result.rows.length === 0) {
+      return apiError(res, 404, 'Skill no encontrado');
+    }
+    apiSuccess(res, { deleted: result.rows[0] });
+  } catch (err) {
+    apiError(res, 500, 'Error al eliminar skill');
+  }
+});
+
+// ====== MCP SERVER REGISTRY ======
+
+// List MCP servers
+app.get('/api/mcp', requireAuth, async (req, res) => {
+  try {
+    const { active, transport } = req.query;
+
+    let query = 'SELECT * FROM mcp_servers WHERE 1=1';
+    const params = [];
+    let idx = 1;
+
+    if (active !== undefined) {
+      query += ` AND is_active = $${idx}`;
+      params.push(active === 'true');
+      idx++;
+    }
+    if (transport) {
+      query += ` AND transport_type = $${idx}`;
+      params.push(transport);
+      idx++;
+    }
+
+    query += ' ORDER BY name ASC';
+    const result = await pool.query(query, params);
+
+    // Get agent mappings for each server
+    const serversWithAgents = await Promise.all(result.rows.map(async (server) => {
+      const agentResult = await pool.query(
+        `SELECT a.id, a.name, a.type, ams.is_required
+         FROM agent_mcp_servers ams JOIN agents a ON ams.agent_id = a.id
+         WHERE ams.mcp_server_id = $1`,
+        [server.id]
+      );
+      return { ...server, mapped_agents: agentResult.rows };
+    }));
+
+    apiSuccess(res, { mcp_servers: serversWithAgents });
+  } catch (err) {
+    console.error('List MCP servers error:', err.message);
+    apiError(res, 500, 'Error al cargar servidores MCP');
+  }
+});
+
+// Get single MCP server
+app.get('/api/mcp/:id', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM mcp_servers WHERE id = $1', [req.params.id]);
+    if (result.rows.length === 0) {
+      return apiError(res, 404, 'Servidor MCP no encontrado');
+    }
+
+    const server = result.rows[0];
+    const agentResult = await pool.query(
+      `SELECT a.id, a.name, a.type, ams.is_required, ams.config_overrides
+       FROM agent_mcp_servers ams JOIN agents a ON ams.agent_id = a.id
+       WHERE ams.mcp_server_id = $1`,
+      [req.params.id]
+    );
+
+    apiSuccess(res, { mcp_server: server, mapped_agents: agentResult.rows });
+  } catch (err) {
+    apiError(res, 500, 'Error al cargar servidor MCP');
+  }
+});
+
+// Register MCP server
+app.post('/api/mcp', requireAuth, requireScope('write'), async (req, res) => {
+  try {
+    const { name, description, server_url, transport_type, config, tools, oauth_required, oauth_config } = req.body;
+
+    if (!name) {
+      return apiError(res, 400, 'Nombre es requerido');
+    }
+
+    const result = await pool.query(
+      `INSERT INTO mcp_servers (name, description, server_url, transport_type, config, tools, oauth_required, oauth_config)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [
+        name.trim().toLowerCase().replace(/\s+/g, '_'),
+        description || '',
+        server_url || null,
+        transport_type || 'stdio',
+        JSON.stringify(config || {}),
+        JSON.stringify(tools || []),
+        oauth_required || false,
+        JSON.stringify(oauth_config || {})
+      ]
+    );
+
+    apiSuccess(res, { mcp_server: result.rows[0] }, 201);
+  } catch (err) {
+    if (err.code === '23505') {
+      return apiError(res, 409, 'Ya existe un servidor MCP con ese nombre');
+    }
+    console.error('Create MCP server error:', err.message);
+    apiError(res, 500, 'Error al registrar servidor MCP');
+  }
+});
+
+// Update MCP server
+app.put('/api/mcp/:id', requireAuth, requireScope('write'), async (req, res) => {
+  try {
+    const { description, server_url, transport_type, config, tools, oauth_required, oauth_config, is_active } = req.body;
+
+    const existing = await pool.query('SELECT * FROM mcp_servers WHERE id = $1', [req.params.id]);
+    if (existing.rows.length === 0) {
+      return apiError(res, 404, 'Servidor MCP no encontrado');
+    }
+
+    const old = existing.rows[0];
+    const result = await pool.query(
+      `UPDATE mcp_servers SET
+        description = $1, server_url = $2, transport_type = $3, config = $4,
+        tools = $5, oauth_required = $6, oauth_config = $7, is_active = $8, updated_at = NOW()
+       WHERE id = $9 RETURNING *`,
+      [
+        description !== undefined ? description : old.description,
+        server_url !== undefined ? server_url : old.server_url,
+        transport_type || old.transport_type,
+        JSON.stringify(config || old.config),
+        JSON.stringify(tools || old.tools),
+        oauth_required !== undefined ? oauth_required : old.oauth_required,
+        JSON.stringify(oauth_config || old.oauth_config),
+        is_active !== undefined ? is_active : old.is_active,
+        req.params.id
+      ]
+    );
+
+    apiSuccess(res, { mcp_server: result.rows[0] });
+  } catch (err) {
+    console.error('Update MCP server error:', err.message);
+    apiError(res, 500, 'Error al actualizar servidor MCP');
+  }
+});
+
+// Delete MCP server (soft delete)
+app.delete('/api/mcp/:id', requireAuth, requireScope('write'), async (req, res) => {
+  try {
+    const result = await pool.query(
+      'UPDATE mcp_servers SET is_active = false, updated_at = NOW() WHERE id = $1 RETURNING id, name',
+      [req.params.id]
+    );
+    if (result.rows.length === 0) {
+      return apiError(res, 404, 'Servidor MCP no encontrado');
+    }
+    apiSuccess(res, { deleted: result.rows[0] });
+  } catch (err) {
+    apiError(res, 500, 'Error al eliminar servidor MCP');
+  }
+});
+
+// Map MCP server to agent
+app.post('/api/mcp/:id/agents', requireAuth, requireScope('write'), async (req, res) => {
+  try {
+    const { agent_id, is_required, config_overrides } = req.body;
+
+    if (!agent_id) {
+      return apiError(res, 400, 'agent_id es requerido');
+    }
+
+    const result = await pool.query(
+      `INSERT INTO agent_mcp_servers (agent_id, mcp_server_id, is_required, config_overrides)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (agent_id, mcp_server_id) DO UPDATE SET is_required = $3, config_overrides = $4
+       RETURNING *`,
+      [agent_id, req.params.id, is_required || false, JSON.stringify(config_overrides || {})]
+    );
+
+    apiSuccess(res, { mapping: result.rows[0] }, 201);
+  } catch (err) {
+    console.error('Map MCP to agent error:', err.message);
+    apiError(res, 500, 'Error al mapear servidor MCP a agente');
+  }
+});
+
+// Remove MCP-agent mapping
+app.delete('/api/mcp/:id/agents/:agentId', requireAuth, requireScope('write'), async (req, res) => {
+  try {
+    const result = await pool.query(
+      'DELETE FROM agent_mcp_servers WHERE mcp_server_id = $1 AND agent_id = $2 RETURNING id',
+      [req.params.id, req.params.agentId]
+    );
+    if (result.rows.length === 0) {
+      return apiError(res, 404, 'Mapeo no encontrado');
+    }
+    apiSuccess(res, { ok: true });
+  } catch (err) {
+    apiError(res, 500, 'Error al eliminar mapeo');
+  }
+});
+
+// ====== COMPANIES API ======
+
+// List companies
+app.get('/api/companies', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM companies WHERE owner_id = $1 ORDER BY created_at DESC',
+      [req.user.id]
+    );
+    apiSuccess(res, { companies: result.rows });
+  } catch (err) {
+    apiError(res, 500, 'Error al cargar empresas');
+  }
+});
+
+// Get single company
+app.get('/api/companies/:id', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM companies WHERE id = $1 AND owner_id = $2',
+      [req.params.id, req.user.id]
+    );
+    if (result.rows.length === 0) {
+      return apiError(res, 404, 'Empresa no encontrada');
+    }
+    apiSuccess(res, { company: result.rows[0] });
+  } catch (err) {
+    apiError(res, 500, 'Error al cargar empresa');
+  }
+});
+
+// Create company
+app.post('/api/companies', requireAuth, requireScope('write'), async (req, res) => {
+  try {
+    const { name, slug, plan, locale, metadata } = req.body;
+
+    if (!name) {
+      return apiError(res, 400, 'Nombre es requerido');
+    }
+
+    // Check company limit
+    const countResult = await pool.query(
+      'SELECT COUNT(*)::int as count FROM companies WHERE owner_id = $1',
+      [req.user.id]
+    );
+    const subResult = await pool.query(
+      `SELECT sp.max_companies FROM subscriptions s
+       JOIN subscription_plans sp ON s.plan_slug = sp.slug
+       WHERE s.user_id = $1 AND s.status = 'active'
+       ORDER BY s.created_at DESC LIMIT 1`,
+      [req.user.id]
+    );
+    const maxCompanies = subResult.rows[0]?.max_companies || 1;
+    if (maxCompanies > 0 && countResult.rows[0].count >= maxCompanies) {
+      return apiError(res, 403, `Límite de empresas alcanzado (${maxCompanies}). Actualiza tu plan.`);
+    }
+
+    const companySlug = slug || name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+    const result = await pool.query(
+      `INSERT INTO companies (name, slug, owner_id, plan, locale, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [name.trim(), companySlug, req.user.id, plan || 'free', locale || 'es', JSON.stringify(metadata || {})]
+    );
+
+    apiSuccess(res, { company: result.rows[0] }, 201);
+  } catch (err) {
+    if (err.code === '23505') {
+      return apiError(res, 409, 'Ya existe una empresa con ese slug');
+    }
+    console.error('Create company error:', err.message);
+    apiError(res, 500, 'Error al crear empresa');
+  }
+});
+
+// Update company
+app.put('/api/companies/:id', requireAuth, requireScope('write'), async (req, res) => {
+  try {
+    const { name, plan, locale, metadata } = req.body;
+
+    const existing = await pool.query(
+      'SELECT * FROM companies WHERE id = $1 AND owner_id = $2',
+      [req.params.id, req.user.id]
+    );
+    if (existing.rows.length === 0) {
+      return apiError(res, 404, 'Empresa no encontrada');
+    }
+
+    const old = existing.rows[0];
+    const result = await pool.query(
+      `UPDATE companies SET name = $1, plan = $2, locale = $3, metadata = $4, updated_at = NOW()
+       WHERE id = $5 AND owner_id = $6 RETURNING *`,
+      [
+        name || old.name,
+        plan || old.plan,
+        locale || old.locale,
+        JSON.stringify(metadata || old.metadata),
+        req.params.id,
+        req.user.id
+      ]
+    );
+
+    apiSuccess(res, { company: result.rows[0] });
+  } catch (err) {
+    apiError(res, 500, 'Error al actualizar empresa');
+  }
+});
+
+// Delete company
+app.delete('/api/companies/:id', requireAuth, requireScope('write'), async (req, res) => {
+  try {
+    const result = await pool.query(
+      'DELETE FROM companies WHERE id = $1 AND owner_id = $2 RETURNING id, name',
+      [req.params.id, req.user.id]
+    );
+    if (result.rows.length === 0) {
+      return apiError(res, 404, 'Empresa no encontrada');
+    }
+    apiSuccess(res, { deleted: result.rows[0] });
+  } catch (err) {
+    apiError(res, 500, 'Error al eliminar empresa');
+  }
+});
+
+// ====== EXECUTIONS API ======
+
+// List executions (agent execution logs)
+app.get('/api/executions', requireAuth, async (req, res) => {
+  try {
+    const { agent_id, status, success, limit = 50, offset = 0 } = req.query;
+
+    let query = `SELECT ae.*, a.name as agent_name, a.type as agent_type,
+                        t.title as task_title, t.tag as task_tag
+                 FROM agent_executions ae
+                 JOIN agents a ON ae.agent_id = a.id
+                 LEFT JOIN tasks t ON ae.task_id = t.id
+                 WHERE 1=1`;
+    const params = [];
+    let idx = 1;
+
+    if (agent_id) {
+      query += ` AND ae.agent_id = $${idx}`;
+      params.push(agent_id);
+      idx++;
+    }
+    if (status) {
+      query += ` AND ae.status = $${idx}`;
+      params.push(status);
+      idx++;
+    }
+    if (success !== undefined) {
+      query += ` AND ae.success = $${idx}`;
+      params.push(success === 'true');
+      idx++;
+    }
+
+    query += ` ORDER BY ae.started_at DESC LIMIT $${idx} OFFSET $${idx + 1}`;
+    params.push(parseInt(limit), parseInt(offset));
+
+    const result = await pool.query(query, params);
+
+    apiSuccess(res, {
+      executions: result.rows,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+  } catch (err) {
+    console.error('List executions error:', err.message);
+    apiError(res, 500, 'Error al cargar ejecuciones');
+  }
+});
+
+// Get single execution
+app.get('/api/executions/:id', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT ae.*, a.name as agent_name, a.type as agent_type,
+              t.title as task_title, t.tag as task_tag, t.description as task_description
+       FROM agent_executions ae
+       JOIN agents a ON ae.agent_id = a.id
+       LEFT JOIN tasks t ON ae.task_id = t.id
+       WHERE ae.id = $1`,
+      [req.params.id]
+    );
+    if (result.rows.length === 0) {
+      return apiError(res, 404, 'Ejecución no encontrada');
+    }
+    apiSuccess(res, { execution: result.rows[0] });
+  } catch (err) {
+    apiError(res, 500, 'Error al cargar ejecución');
+  }
+});
+
+// ====== OPENAPI DOCUMENTATION ======
+
+app.get('/api/docs/openapi.json', (req, res) => {
+  res.json({
+    openapi: '3.0.3',
+    info: {
+      title: 'Polsia ES API',
+      description: 'API pública de Polsia ES — gestión de empresas, tareas, agentes, skills y servidores MCP.',
+      version: '1.0.0',
+      contact: { email: 'soporte@polsia.app' }
+    },
+    servers: [
+      { url: process.env.APP_URL || `${req.protocol}://${req.get('host')}`, description: 'Producción' }
+    ],
+    components: {
+      securitySchemes: {
+        sessionAuth: { type: 'apiKey', in: 'cookie', name: 'connect.sid', description: 'Autenticación por sesión (cookie)' },
+        apiKeyAuth: { type: 'http', scheme: 'bearer', description: 'Clave API (Bearer pk_xxx...)' }
+      },
+      schemas: {
+        Error: {
+          type: 'object',
+          properties: {
+            ok: { type: 'boolean', example: false },
+            error: { type: 'string' },
+            timestamp: { type: 'string', format: 'date-time' }
+          }
+        },
+        Skill: {
+          type: 'object',
+          properties: {
+            id: { type: 'integer' },
+            name: { type: 'string' },
+            summary: { type: 'string' },
+            content: { type: 'string' },
+            keywords: { type: 'array', items: { type: 'string' } },
+            agent_types: { type: 'array', items: { type: 'string' } },
+            version: { type: 'integer' },
+            is_active: { type: 'boolean' }
+          }
+        },
+        McpServer: {
+          type: 'object',
+          properties: {
+            id: { type: 'integer' },
+            name: { type: 'string' },
+            description: { type: 'string' },
+            transport_type: { type: 'string' },
+            tools: { type: 'array', items: { type: 'string' } },
+            oauth_required: { type: 'boolean' },
+            is_active: { type: 'boolean' }
+          }
+        },
+        ApiKey: {
+          type: 'object',
+          properties: {
+            id: { type: 'integer' },
+            key_prefix: { type: 'string' },
+            name: { type: 'string' },
+            scopes: { type: 'array', items: { type: 'string' } },
+            rate_limit_per_minute: { type: 'integer' },
+            is_active: { type: 'boolean' }
+          }
+        }
+      }
+    },
+    security: [{ sessionAuth: [] }, { apiKeyAuth: [] }],
+    paths: {
+      '/api/auth/signup': {
+        post: { tags: ['Autenticación'], summary: 'Crear cuenta', requestBody: { content: { 'application/json': { schema: { type: 'object', required: ['email', 'password'], properties: { email: { type: 'string' }, password: { type: 'string' }, name: { type: 'string' }, referral_code: { type: 'string' } } } } } }, responses: { '201': { description: 'Cuenta creada' }, '409': { description: 'Email ya registrado' } } }
+      },
+      '/api/auth/login': {
+        post: { tags: ['Autenticación'], summary: 'Iniciar sesión', requestBody: { content: { 'application/json': { schema: { type: 'object', required: ['email', 'password'], properties: { email: { type: 'string' }, password: { type: 'string' } } } } } }, responses: { '200': { description: 'Sesión iniciada' } } }
+      },
+      '/api/auth/me': {
+        get: { tags: ['Autenticación'], summary: 'Obtener usuario actual', responses: { '200': { description: 'Datos del usuario' }, '401': { description: 'No autenticado' } } }
+      },
+      '/api/keys': {
+        get: { tags: ['Claves API'], summary: 'Listar claves API', responses: { '200': { description: 'Lista de claves' } } },
+        post: { tags: ['Claves API'], summary: 'Generar nueva clave API', requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { name: { type: 'string' }, scopes: { type: 'array', items: { type: 'string' } }, rate_limit_per_minute: { type: 'integer' }, expires_in_days: { type: 'integer' } } } } } }, responses: { '201': { description: 'Clave creada (se muestra UNA sola vez)' } } }
+      },
+      '/api/keys/{id}': {
+        delete: { tags: ['Claves API'], summary: 'Revocar clave API', parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }], responses: { '200': { description: 'Clave revocada' } } }
+      },
+      '/api/skills': {
+        get: { tags: ['Skills'], summary: 'Buscar/listar skills', parameters: [{ name: 'q', in: 'query', schema: { type: 'string' }, description: 'Búsqueda por nombre, resumen o keywords' }, { name: 'agent_type', in: 'query', schema: { type: 'string' }, description: 'Filtrar por tipo de agente' }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 50 } }, { name: 'offset', in: 'query', schema: { type: 'integer', default: 0 } }], responses: { '200': { description: 'Lista de skills' } } },
+        post: { tags: ['Skills'], summary: 'Crear skill', requestBody: { content: { 'application/json': { schema: { type: 'object', required: ['name', 'content'], properties: { name: { type: 'string' }, summary: { type: 'string' }, content: { type: 'string' }, keywords: { type: 'array', items: { type: 'string' } }, agent_types: { type: 'array', items: { type: 'string' } } } } } } }, responses: { '201': { description: 'Skill creado' } } }
+      },
+      '/api/skills/{id}': {
+        get: { tags: ['Skills'], summary: 'Obtener skill por ID o nombre', parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Detalle del skill' } } },
+        put: { tags: ['Skills'], summary: 'Actualizar skill', parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }], responses: { '200': { description: 'Skill actualizado' } } },
+        delete: { tags: ['Skills'], summary: 'Eliminar skill', parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }], responses: { '200': { description: 'Skill eliminado' } } }
+      },
+      '/api/mcp': {
+        get: { tags: ['Servidores MCP'], summary: 'Listar servidores MCP', parameters: [{ name: 'active', in: 'query', schema: { type: 'boolean' } }, { name: 'transport', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Lista de servidores MCP con agentes mapeados' } } },
+        post: { tags: ['Servidores MCP'], summary: 'Registrar servidor MCP', requestBody: { content: { 'application/json': { schema: { type: 'object', required: ['name'], properties: { name: { type: 'string' }, description: { type: 'string' }, server_url: { type: 'string' }, transport_type: { type: 'string' }, tools: { type: 'array', items: { type: 'string' } }, oauth_required: { type: 'boolean' } } } } } }, responses: { '201': { description: 'Servidor registrado' } } }
+      },
+      '/api/mcp/{id}': {
+        get: { tags: ['Servidores MCP'], summary: 'Obtener servidor MCP', parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }], responses: { '200': { description: 'Detalle del servidor MCP' } } },
+        put: { tags: ['Servidores MCP'], summary: 'Actualizar servidor MCP', parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }], responses: { '200': { description: 'Servidor actualizado' } } },
+        delete: { tags: ['Servidores MCP'], summary: 'Desactivar servidor MCP', parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }], responses: { '200': { description: 'Servidor desactivado' } } }
+      },
+      '/api/mcp/{id}/agents': {
+        post: { tags: ['Servidores MCP'], summary: 'Mapear servidor MCP a agente', parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', required: ['agent_id'], properties: { agent_id: { type: 'integer' }, is_required: { type: 'boolean' } } } } } }, responses: { '201': { description: 'Mapeo creado' } } }
+      },
+      '/api/companies': {
+        get: { tags: ['Empresas'], summary: 'Listar empresas', responses: { '200': { description: 'Lista de empresas' } } },
+        post: { tags: ['Empresas'], summary: 'Crear empresa', requestBody: { content: { 'application/json': { schema: { type: 'object', required: ['name'], properties: { name: { type: 'string' }, slug: { type: 'string' }, plan: { type: 'string' }, locale: { type: 'string' } } } } } }, responses: { '201': { description: 'Empresa creada' } } }
+      },
+      '/api/companies/{id}': {
+        get: { tags: ['Empresas'], summary: 'Obtener empresa', parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }], responses: { '200': { description: 'Detalle de la empresa' } } },
+        put: { tags: ['Empresas'], summary: 'Actualizar empresa', parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }], responses: { '200': { description: 'Empresa actualizada' } } },
+        delete: { tags: ['Empresas'], summary: 'Eliminar empresa', parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }], responses: { '200': { description: 'Empresa eliminada' } } }
+      },
+      '/api/tasks': {
+        get: { tags: ['Tareas'], summary: 'Listar tareas con filtros', parameters: [{ name: 'status', in: 'query', schema: { type: 'string' } }, { name: 'tag', in: 'query', schema: { type: 'string' } }, { name: 'priority', in: 'query', schema: { type: 'string' } }, { name: 'search', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Lista de tareas' } } },
+        post: { tags: ['Tareas'], summary: 'Crear tarea', responses: { '201': { description: 'Tarea creada' } } }
+      },
+      '/api/agents': {
+        get: { tags: ['Agentes'], summary: 'Listar agentes con estadísticas', responses: { '200': { description: 'Lista de agentes' } } }
+      },
+      '/api/agents/find-best': {
+        post: { tags: ['Agentes'], summary: 'Encontrar mejor agente para tarea', requestBody: { content: { 'application/json': { schema: { type: 'object', required: ['title'], properties: { tag: { type: 'string' }, title: { type: 'string' }, description: { type: 'string' }, complexity: { type: 'integer' } } } } } }, responses: { '200': { description: 'Mejor agente encontrado' } } }
+      },
+      '/api/executions': {
+        get: { tags: ['Ejecuciones'], summary: 'Listar ejecuciones de agentes', parameters: [{ name: 'agent_id', in: 'query', schema: { type: 'integer' } }, { name: 'status', in: 'query', schema: { type: 'string' } }, { name: 'success', in: 'query', schema: { type: 'boolean' } }], responses: { '200': { description: 'Lista de ejecuciones' } } }
+      },
+      '/api/executions/{id}': {
+        get: { tags: ['Ejecuciones'], summary: 'Obtener ejecución', parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }], responses: { '200': { description: 'Detalle de la ejecución' } } }
+      },
+      '/api/billing': {
+        get: { tags: ['Facturación'], summary: 'Obtener suscripción y uso actual', responses: { '200': { description: 'Datos de facturación' } } }
+      },
+      '/api/dashboard/stats': {
+        get: { tags: ['Dashboard'], summary: 'Estadísticas del dashboard', responses: { '200': { description: 'Estadísticas generales' } } }
+      },
+      '/health': {
+        get: { tags: ['Sistema'], summary: 'Estado de salud del sistema', security: [], responses: { '200': { description: 'Sistema saludable' }, '503': { description: 'Sistema degradado' } } }
+      }
+    },
+    tags: [
+      { name: 'Autenticación', description: 'Registro, login y gestión de sesión' },
+      { name: 'Claves API', description: 'Generar y gestionar claves de acceso API' },
+      { name: 'Skills', description: 'Procedimientos reutilizables para agentes' },
+      { name: 'Servidores MCP', description: 'Registro de servidores Model Context Protocol' },
+      { name: 'Empresas', description: 'Gestión de empresas (CRUD)' },
+      { name: 'Tareas', description: 'Ciclo de vida completo de tareas' },
+      { name: 'Agentes', description: 'Registro y enrutamiento de agentes IA' },
+      { name: 'Ejecuciones', description: 'Historial de ejecuciones de agentes' },
+      { name: 'Facturación', description: 'Suscripciones, créditos y uso' },
+      { name: 'Dashboard', description: 'Estadísticas generales' },
+      { name: 'Sistema', description: 'Salud y monitoreo' }
+    ]
+  });
+});
+
 // ====== DASHBOARD STATS ======
 
 async function getTaskCounts(userId) {
@@ -1164,6 +2045,26 @@ app.get('/agentes', requireAuth, (req, res) => {
 // Billing page (protected)
 app.get('/facturacion', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'billing.html'));
+});
+
+// Skills page (protected)
+app.get('/skills', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'skills.html'));
+});
+
+// MCP servers page (protected)
+app.get('/mcp', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'mcp.html'));
+});
+
+// API documentation page (public)
+app.get('/api/docs', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'api-docs.html'));
+});
+
+// API keys management page (protected)
+app.get('/claves-api', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'api-keys.html'));
 });
 
 // Global error handler
