@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Precios - Polsia ES</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="/theme.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #111118;
+            --bg-card: #16161f;
+            --border: #1e1e2a;
+            --text-primary: #e8e8ed;
+            --text-secondary: #8888a0;
+            --text-dim: #55556a;
+            --accent: #00e599;
+            --accent-dim: #00e59920;
+            --amber: #ffb800;
+            --red: #ff4466;
+            --blue: #4488ff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .theme-toggle {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .theme-toggle:hover {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #000;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px var(--accent-dim);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 8rem 2rem 4rem;
+            text-align: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .hero h1 {
+            font-size: 4rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--accent), var(--blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Pricing Cards */
+        .pricing-section {
+            padding: 4rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-bottom: 4rem;
+        }
+
+        .pricing-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 2rem;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent);
+        }
+
+        .pricing-card.featured {
+            border-color: var(--accent);
+            box-shadow: 0 0 40px var(--accent-dim);
+        }
+
+        .pricing-card.featured::before {
+            content: 'MÁS POPULAR';
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent);
+            color: #000;
+            padding: 0.25rem 1rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+
+        .plan-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .plan-price {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .plan-price .currency {
+            font-size: 1.5rem;
+        }
+
+        .plan-period {
+            color: var(--text-dim);
+            font-size: 0.875rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .plan-features {
+            list-style: none;
+            margin-bottom: 2rem;
+        }
+
+        .plan-features li {
+            padding: 0.5rem 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .plan-features li::before {
+            content: '✓';
+            color: var(--accent);
+            font-weight: 700;
+            margin-right: 0.5rem;
+        }
+
+        /* Comparison Table */
+        .comparison-section {
+            padding: 4rem 2rem;
+            background: var(--bg-secondary);
+        }
+
+        .comparison-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .comparison-section h2 {
+            font-size: 3rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 3rem;
+            color: var(--text-primary);
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-card);
+            border-radius: 1rem;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .comparison-table thead {
+            background: var(--bg-primary);
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 1.25rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .comparison-table th:first-child,
+        .comparison-table td:first-child {
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .comparison-table th {
+            font-weight: 700;
+            font-size: 1.125rem;
+            color: var(--text-primary);
+        }
+
+        .comparison-table td {
+            color: var(--text-secondary);
+        }
+
+        .comparison-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .comparison-table .featured-col {
+            background: var(--accent-dim);
+        }
+
+        .check-mark {
+            color: var(--accent);
+            font-size: 1.25rem;
+        }
+
+        .cross-mark {
+            color: var(--text-dim);
+            font-size: 1.25rem;
+        }
+
+        /* FAQ Section */
+        .faq-section {
+            padding: 4rem 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .faq-section h2 {
+            font-size: 3rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 3rem;
+            color: var(--text-primary);
+        }
+
+        .faq-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s;
+        }
+
+        .faq-item:hover {
+            border-color: var(--accent);
+        }
+
+        .faq-question {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+
+        .faq-answer {
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            padding: 6rem 2rem;
+            text-align: center;
+            background: linear-gradient(135deg, var(--bg-secondary), var(--bg-primary));
+        }
+
+        .cta-section h2 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .cta-section p {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            padding: 3rem 2rem;
+        }
+
+        .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 3rem;
+        }
+
+        .footer-section h3 {
+            color: var(--text-primary);
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .footer-section ul {
+            list-style: none;
+        }
+
+        .footer-section ul li {
+            margin-bottom: 0.75rem;
+        }
+
+        .footer-section a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .footer-section a:hover {
+            color: var(--accent);
+        }
+
+        .footer-bottom {
+            max-width: 1200px;
+            margin: 3rem auto 0;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            color: var(--text-dim);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-links {
+                gap: 1rem;
+            }
+
+            .nav-links a {
+                display: none;
+            }
+
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
+            }
+
+            .pricing-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .comparison-table {
+                font-size: 0.875rem;
+            }
+
+            .comparison-table th,
+            .comparison-table td {
+                padding: 0.75rem 0.5rem;
+            }
+
+            .comparison-section h2,
+            .faq-section h2,
+            .cta-section h2 {
+                font-size: 2rem;
+            }
+
+            .footer-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .comparison-table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-container">
+            <a href="/" class="logo">polsia.es</a>
+            <div class="nav-links">
+                <a href="/">Inicio</a>
+                <a href="#comparar">Comparar</a>
+                <button class="theme-toggle">Tema</button>
+                <a href="/login.html" class="btn btn-secondary">Iniciar sesión</a>
+                <a href="/signup.html" class="btn btn-primary">Registrarse</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <h1>Elige tu plan</h1>
+        <p>Selecciona el plan perfecto para tu negocio. Escala cuando lo necesites, sin compromisos a largo plazo.</p>
+    </section>
+
+    <!-- Pricing Cards -->
+    <section class="pricing-section">
+        <div class="pricing-grid">
+            <!-- Free Plan -->
+            <div class="pricing-card">
+                <h3 class="plan-name">Free</h3>
+                <div class="plan-price">
+                    <span class="currency">$</span>0
+                </div>
+                <div class="plan-period">Para siempre gratis</div>
+                <ul class="plan-features">
+                    <li>100 API calls/día</li>
+                    <li>10 LLM calls/día</li>
+                    <li>1 empresa</li>
+                    <li>3 créditos de tareas</li>
+                    <li>Documentación completa</li>
+                    <li>Soporte comunitario</li>
+                </ul>
+                <a href="/signup.html" class="btn btn-secondary" style="width: 100%;">Comenzar gratis</a>
+            </div>
+
+            <!-- Starter Plan -->
+            <div class="pricing-card">
+                <h3 class="plan-name">Starter</h3>
+                <div class="plan-price">
+                    <span class="currency">$</span>29
+                </div>
+                <div class="plan-period">por mes</div>
+                <ul class="plan-features">
+                    <li>5,000 API calls/día</li>
+                    <li>500 LLM calls/día</li>
+                    <li>3 empresas</li>
+                    <li>25 créditos de tareas</li>
+                    <li>Excedentes disponibles</li>
+                    <li>Soporte prioritario</li>
+                </ul>
+                <a href="/signup.html" class="btn btn-secondary" style="width: 100%;">Empezar ahora</a>
+            </div>
+
+            <!-- Pro Plan (Featured) -->
+            <div class="pricing-card featured">
+                <h3 class="plan-name">Pro</h3>
+                <div class="plan-price">
+                    <span class="currency">$</span>79
+                </div>
+                <div class="plan-period">por mes</div>
+                <ul class="plan-features">
+                    <li>25,000 API calls/día</li>
+                    <li>2,500 LLM calls/día</li>
+                    <li>10 empresas</li>
+                    <li>100 créditos de tareas</li>
+                    <li>Analítica avanzada</li>
+                    <li>Soporte prioritario</li>
+                </ul>
+                <a href="/signup.html" class="btn btn-primary" style="width: 100%;">Comenzar Pro</a>
+            </div>
+
+            <!-- Enterprise Plan -->
+            <div class="pricing-card">
+                <h3 class="plan-name">Enterprise</h3>
+                <div class="plan-price">
+                    <span class="currency">$</span>199
+                </div>
+                <div class="plan-period">por mes</div>
+                <ul class="plan-features">
+                    <li>100,000 API calls/día</li>
+                    <li>10,000 LLM calls/día</li>
+                    <li>Empresas ilimitadas</li>
+                    <li>500 créditos de tareas</li>
+                    <li>SLA garantizado</li>
+                    <li>API dedicada</li>
+                </ul>
+                <a href="/signup.html" class="btn btn-secondary" style="width: 100%;">Contactar ventas</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Comparison Table -->
+    <section class="comparison-section" id="comparar">
+        <div class="comparison-container">
+            <h2>Comparación completa de planes</h2>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Característica</th>
+                        <th>Free</th>
+                        <th>Starter</th>
+                        <th class="featured-col">Pro</th>
+                        <th>Enterprise</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>API calls/día</td>
+                        <td>100</td>
+                        <td>5,000</td>
+                        <td class="featured-col">25,000</td>
+                        <td>100,000</td>
+                    </tr>
+                    <tr>
+                        <td>LLM calls/día</td>
+                        <td>10</td>
+                        <td>500</td>
+                        <td class="featured-col">2,500</td>
+                        <td>10,000</td>
+                    </tr>
+                    <tr>
+                        <td>Empresas</td>
+                        <td>1</td>
+                        <td>3</td>
+                        <td class="featured-col">10</td>
+                        <td>Ilimitadas</td>
+                    </tr>
+                    <tr>
+                        <td>Créditos de tareas</td>
+                        <td>3</td>
+                        <td>25</td>
+                        <td class="featured-col">100</td>
+                        <td>500</td>
+                    </tr>
+                    <tr>
+                        <td>Excedente API</td>
+                        <td>N/A</td>
+                        <td class="mono">$0.01/call</td>
+                        <td class="featured-col mono">$0.01/call</td>
+                        <td class="mono">$0.01/call</td>
+                    </tr>
+                    <tr>
+                        <td>Excedente LLM</td>
+                        <td>N/A</td>
+                        <td class="mono">$0.05/call</td>
+                        <td class="featured-col mono">$0.05/call</td>
+                        <td class="mono">$0.05/call</td>
+                    </tr>
+                    <tr>
+                        <td>Analítica avanzada</td>
+                        <td><span class="cross-mark">✗</span></td>
+                        <td><span class="cross-mark">✗</span></td>
+                        <td class="featured-col"><span class="check-mark">✓</span></td>
+                        <td><span class="check-mark">✓</span></td>
+                    </tr>
+                    <tr>
+                        <td>Soporte prioritario</td>
+                        <td><span class="cross-mark">✗</span></td>
+                        <td><span class="check-mark">✓</span></td>
+                        <td class="featured-col"><span class="check-mark">✓</span></td>
+                        <td><span class="check-mark">✓</span></td>
+                    </tr>
+                    <tr>
+                        <td>SLA garantizado</td>
+                        <td><span class="cross-mark">✗</span></td>
+                        <td><span class="cross-mark">✗</span></td>
+                        <td class="featured-col"><span class="cross-mark">✗</span></td>
+                        <td><span class="check-mark">✓</span></td>
+                    </tr>
+                    <tr>
+                        <td>API dedicada</td>
+                        <td><span class="cross-mark">✗</span></td>
+                        <td><span class="cross-mark">✗</span></td>
+                        <td class="featured-col"><span class="cross-mark">✗</span></td>
+                        <td><span class="check-mark">✓</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="faq-section">
+        <h2>Preguntas frecuentes</h2>
+
+        <div class="faq-item">
+            <div class="faq-question">¿Puedo cambiar de plan en cualquier momento?</div>
+            <div class="faq-answer">
+                Sí, puedes actualizar o degradar tu plan en cualquier momento. Los cambios se aplicarán inmediatamente y ajustaremos la facturación de forma prorrateada para el período de facturación actual.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">¿Qué sucede si supero mis límites diarios?</div>
+            <div class="faq-answer">
+                En los planes Starter, Pro y Enterprise, puedes continuar usando el servicio pagando tarifas de excedente: $0.01 por API call adicional y $0.05 por LLM call adicional. El plan Free no permite excedentes.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">¿Ofrecen descuentos por facturación anual?</div>
+            <div class="faq-answer">
+                Sí, ofrecemos un descuento del 20% en todos los planes pagos si eliges la facturación anual. Contacta a nuestro equipo de ventas para obtener más información sobre precios anuales personalizados.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">¿Hay periodo de prueba gratuito?</div>
+            <div class="faq-answer">
+                Todos los planes de pago incluyen una prueba gratuita de 14 días sin necesidad de tarjeta de crédito. Puedes explorar todas las funciones premium antes de comprometerte con un plan.
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <h2>¿Listo para comenzar?</h2>
+        <p>Únete a miles de empresas que confían en Polsia ES para sus soluciones de IA</p>
+        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+            <a href="/signup.html" class="btn btn-primary">Comenzar gratis</a>
+            <a href="mailto:ventas@polsia.es" class="btn btn-secondary">Contactar ventas</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-container">
+            <div class="footer-section">
+                <h3>Polsia ES</h3>
+                <p style="color: var(--text-secondary); margin-top: 0.5rem;">
+                    Plataforma de agentes de IA para empresas españolas.
+                </p>
+            </div>
+            <div class="footer-section">
+                <h3>Producto</h3>
+                <ul>
+                    <li><a href="/pricing.html">Precios</a></li>
+                    <li><a href="/#caracteristicas">Características</a></li>
+                    <li><a href="/docs">Documentación</a></li>
+                    <li><a href="/api">API</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Empresa</h3>
+                <ul>
+                    <li><a href="/sobre-nosotros">Sobre nosotros</a></li>
+                    <li><a href="/blog">Blog</a></li>
+                    <li><a href="/carreras">Carreras</a></li>
+                    <li><a href="/contacto">Contacto</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Legal</h3>
+                <ul>
+                    <li><a href="/privacidad">Privacidad</a></li>
+                    <li><a href="/terminos">Términos</a></li>
+                    <li><a href="/cookies">Cookies</a></li>
+                    <li><a href="/seguridad">Seguridad</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 Polsia ES. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <!-- Polsia Analytics -->
+    <script>
+        (function() {
+            const script = document.createElement('script');
+            script.src = 'https://polsia.app/t.js';
+            script.setAttribute('data-slug', 'hyper88os');
+            script.async = true;
+            document.head.appendChild(script);
+        })();
+    </script>
+</body>
+</html>

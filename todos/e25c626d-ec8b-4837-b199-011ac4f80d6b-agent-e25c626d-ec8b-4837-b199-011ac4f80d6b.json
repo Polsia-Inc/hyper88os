@@ -1,0 +1,37 @@
+[
+  {
+    "content": "Phase 1: Database migrations",
+    "status": "completed",
+    "activeForm": "Creating database migration"
+  },
+  {
+    "content": "Phase 2: Server.js with billing routes",
+    "status": "completed",
+    "activeForm": "Building billing backend"
+  },
+  {
+    "content": "Phase 3: Landing page with social proof",
+    "status": "completed",
+    "activeForm": "Building landing page"
+  },
+  {
+    "content": "Phase 4: Pricing page with comparison",
+    "status": "completed",
+    "activeForm": "Building pricing page"
+  },
+  {
+    "content": "Phase 5: Dashboard with billing UI",
+    "status": "completed",
+    "activeForm": "Building dashboard"
+  },
+  {
+    "content": "Phase 6: Billing management page",
+    "status": "completed",
+    "activeForm": "Building billing page"
+  },
+  {
+    "content": "Phase 7: Update auth pages with theme + referral support, deploy",
+    "status": "in_progress",
+    "activeForm": "Updating auth pages and deploying"
+  }
+]

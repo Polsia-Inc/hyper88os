@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facturación - Polsia ES</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="/theme.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #111118;
+            --bg-card: #16161f;
+            --border: #1e1e2a;
+            --text-primary: #e8e8ed;
+            --text-secondary: #8888a0;
+            --text-dim: #55556a;
+            --accent: #00e599;
+            --accent-dim: #00e59920;
+            --amber: #ffb800;
+            --red: #ff4466;
+            --blue: #4488ff;
+            --sidebar-width: 260px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .dashboard-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            left: 0;
+            top: 0;
+            z-index: 100;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 24px 12px;
+            overflow-y: auto;
+        }
+
+        .nav-item {
+            display: block;
+            padding: 12px 16px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 8px;
+            margin-bottom: 4px;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--accent-dim);
+            color: var(--accent);
+        }
+
+        .sidebar-footer {
+            padding: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--bg-card);
+            border-radius: 8px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--bg-primary);
+        }
+
+        .user-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .user-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .user-logout {
+            font-size: 12px;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .user-logout:hover {
+            color: var(--accent);
+        }
+
+        /* Mobile menu toggle */
+        .mobile-menu-toggle {
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 101;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            cursor: pointer;
+            color: var(--text-primary);
+        }
+
+        .hamburger {
+            width: 24px;
+            height: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .hamburger span {
+            width: 100%;
+            height: 2px;
+            background: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        /* Main content */
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            padding: 40px;
+            max-width: 1400px;
+        }
+
+        .page-header {
+            margin-bottom: 40px;
+        }
+
+        .page-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .page-subtitle {
+            font-size: 16px;
+            color: var(--text-secondary);
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Current Plan Card */
+        .plan-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .plan-details h3 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .plan-price {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+
+        .plan-price span {
+            font-size: 16px;
+            color: var(--text-secondary);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-success {
+            background: var(--accent-dim);
+            color: var(--accent);
+        }
+
+        .badge-warning {
+            background: rgba(255, 184, 0, 0.15);
+            color: var(--amber);
+        }
+
+        .badge-info {
+            background: rgba(68, 136, 255, 0.15);
+            color: var(--blue);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: var(--bg-primary);
+        }
+
+        .btn-primary:hover {
+            background: #00ff99;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card);
+            border-color: var(--accent);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--accent);
+            border: 1px solid var(--accent);
+        }
+
+        .btn-outline:hover {
+            background: var(--accent-dim);
+        }
+
+        /* Usage Meters */
+        .usage-grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .usage-meter {
+            margin-bottom: 16px;
+        }
+
+        .usage-meter:last-child {
+            margin-bottom: 0;
+        }
+
+        .usage-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .usage-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .usage-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-secondary);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .credits-display {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            margin-top: 16px;
+        }
+
+        .credits-icon {
+            font-size: 24px;
+        }
+
+        .credits-info {
+            flex: 1;
+        }
+
+        .credits-label {
+            font-size: 12px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .credits-amount {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Plan Grid */
+        .plans-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .plan-card {
+            background: var(--bg-secondary);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .plan-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .plan-card.current {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        .plan-badge {
+            position: absolute;
+            top: -10px;
+            right: 16px;
+            background: var(--accent);
+            color: var(--bg-primary);
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .plan-card h3 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .plan-card .price {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        .plan-card .price span {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .plan-features {
+            list-style: none;
+            margin-bottom: 20px;
+        }
+
+        .plan-features li {
+            padding: 8px 0;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .plan-features li:before {
+            content: "✓";
+            color: var(--accent);
+            font-weight: 700;
+            margin-right: 8px;
+        }
+
+        /* Invoices Table */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: var(--bg-secondary);
+        }
+
+        th {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 16px;
+            border-top: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        tr:hover {
+            background: var(--bg-secondary);
+        }
+
+        .amount {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Referral Section */
+        .referral-code-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .referral-code-label {
+            font-size: 12px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .referral-code-display {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .referral-code {
+            flex: 1;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .copy-btn {
+            padding: 8px 16px;
+            background: var(--accent);
+            color: var(--bg-primary);
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .copy-btn:hover {
+            background: #00ff99;
+        }
+
+        .copy-btn.copied {
+            background: var(--blue);
+        }
+
+        .referral-url {
+            margin: 16px 0;
+            padding: 12px;
+            background: var(--bg-primary);
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--text-secondary);
+            word-break: break-all;
+        }
+
+        .referral-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .referral-stat {
+            padding: 16px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .referral-stat-label {
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-bottom: 4px;
+        }
+
+        .referral-stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Loading State */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: var(--text-dim);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-dim);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .mobile-menu-toggle {
+                display: block;
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 80px 20px 20px;
+            }
+
+            .page-title {
+                font-size: 24px;
+            }
+
+            .plan-info {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .plans-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .referral-stats {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .modal h3 {
+            font-size: 24px;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .modal p {
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-layout">
+        <!-- Mobile Menu Toggle -->
+        <button class="mobile-menu-toggle" id="mobileMenuToggle">
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </button>
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/" class="logo">
+                    <span class="logo-dot"></span>
+                    polsia.es
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="nav-item">Resumen</a>
+                <a href="/agents" class="nav-item">Agentes</a>
+                <a href="/tasks" class="nav-item">Tareas</a>
+                <a href="/reports" class="nav-item">Informes</a>
+                <a href="/billing" class="nav-item active">Facturación</a>
+                <a href="/settings" class="nav-item">Configuración</a>
+                <a href="/help" class="nav-item">Ayuda</a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar">U</div>
+                    <div class="user-details">
+                        <div class="user-name" id="userName">Usuario</div>
+                        <div class="user-logout" onclick="logout()">Cerrar sesión</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header">
+                <h1 class="page-title">Facturación</h1>
+                <p class="page-subtitle">Administra tu suscripción, uso y facturación</p>
+            </div>
+
+            <!-- Current Plan -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Plan Actual</h2>
+                </div>
+                <div class="plan-info" id="currentPlanInfo">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Usage Meters -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Uso Actual</h2>
+                </div>
+                <div class="usage-grid" id="usageMeters">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Plan Upgrade Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Planes Disponibles</h2>
+                </div>
+                <div class="plans-grid" id="plansGrid">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Invoices -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Facturas</h2>
+                </div>
+                <div class="table-container" id="invoicesTable">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Referral Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Programa de Referidos</h2>
+                </div>
+                <div id="referralSection">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Payment Verification Modal -->
+    <div class="modal-overlay" id="paymentModal">
+        <div class="modal">
+            <h3>Confirmar Pago</h3>
+            <p>Por favor, confirma que has completado el pago en la ventana de Stripe.</p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closePaymentModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="verifyPayment()">Confirmar Pago</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let billingData = null;
+        let pendingSubscription = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            await checkAuth();
+            await loadBillingData();
+            await loadInvoices();
+            await loadReferralData();
+            setupMobileMenu();
+            checkPendingSubscription();
+        });
+
+        // Auth check
+        async function checkAuth() {
+            try {
+                const response = await fetch('/api/auth/me', {
+                    credentials: 'include'
+                });
+
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                if (!response.ok) throw new Error('Auth check failed');
+
+                currentUser = await response.json();
+                updateUserInfo();
+            } catch (error) {
+                console.error('Auth error:', error);
+                window.location.href = '/login';
+            }
+        }
+
+        function updateUserInfo() {
+            if (!currentUser) return;
+
+            const userName = document.getElementById('userName');
+            const userAvatar = document.getElementById('userAvatar');
+
+            userName.textContent = currentUser.name || currentUser.email || 'Usuario';
+
+            const initials = (currentUser.name || currentUser.email || 'U')
+                .split(' ')
+                .map(n => n[0])
+                .join('')
+                .toUpperCase()
+                .substring(0, 2);
+
+            userAvatar.textContent = initials;
+        }
+
+        // Load billing data
+        async function loadBillingData() {
+            try {
+                const response = await fetch('/api/billing', {
+                    credentials: 'include'
+                });
+
+                if (!response.ok) throw new Error('Failed to load billing data');
+
+                billingData = await response.json();
+                renderCurrentPlan();
+                renderUsageMeters();
+                renderPlansGrid();
+            } catch (error) {
+                console.error('Error loading billing data:', error);
+                document.getElementById('currentPlanInfo').innerHTML =
+                    '<div class="empty-state"><div class="empty-state-icon">⚠️</div><p>Error al cargar datos de facturación</p></div>';
+            }
+        }
+
+        function renderCurrentPlan() {
+            const container = document.getElementById('currentPlanInfo');
+            const plan = billingData.current_plan || { name: 'Free', price: 0, status: 'activo' };
+
+            container.innerHTML = `
+                <div class="plan-details">
+                    <h3>${plan.name}</h3>
+                    <div class="plan-price">
+                        ${plan.price > 0 ? `$${plan.price}` : 'Gratis'}
+                        ${plan.price > 0 ? '<span>/mes</span>' : ''}
+                    </div>
+                    <span class="badge badge-success">${plan.status}</span>
+                </div>
+                <div>
+                    ${plan.name !== 'Enterprise' ? '<button class="btn btn-primary" onclick="scrollToPlans()">Mejorar Plan</button>' : ''}
+                </div>
+            `;
+        }
+
+        function renderUsageMeters() {
+            const container = document.getElementById('usageMeters');
+            const usage = billingData.usage || {};
+
+            const apiUsed = usage.api_calls_used || 0;
+            const apiLimit = usage.api_calls_limit || 1000;
+            const apiPercent = (apiUsed / apiLimit) * 100;
+
+            const llmUsed = usage.llm_calls_used || 0;
+            const llmLimit = usage.llm_calls_limit || 100;
+            const llmPercent = (llmUsed / llmLimit) * 100;
+
+            const credits = billingData.credits || 0;
+
+            container.innerHTML = `
+                <div class="usage-meter">
+                    <div class="usage-header">
+                        <span class="usage-label">API Calls</span>
+                        <span class="usage-value">${apiUsed} / ${apiLimit} calls hoy</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${Math.min(apiPercent, 100)}%"></div>
+                    </div>
+                </div>
+                <div class="usage-meter">
+                    <div class="usage-header">
+                        <span class="usage-label">LLM Calls</span>
+                        <span class="usage-value">${llmUsed} / ${llmLimit} calls hoy</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${Math.min(llmPercent, 100)}%"></div>
+                    </div>
+                </div>
+                <div class="credits-display">
+                    <div class="credits-icon">💳</div>
+                    <div class="credits-info">
+                        <div class="credits-label">Créditos Disponibles</div>
+                        <div class="credits-amount">${credits}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderPlansGrid() {
+            const container = document.getElementById('plansGrid');
+            const currentPlanName = billingData?.current_plan?.name || 'Free';
+
+            const plans = [
+                {
+                    slug: 'free',
+                    name: 'Free',
+                    price: 0,
+                    features: ['1,000 API calls/día', '100 LLM calls/día', 'Soporte por email', 'Documentación completa']
+                },
+                {
+                    slug: 'starter',
+                    name: 'Starter',
+                    price: 29,
+                    features: ['10,000 API calls/día', '1,000 LLM calls/día', 'Soporte prioritario', 'Webhooks', 'Integraciones básicas']
+                },
+                {
+                    slug: 'pro',
+                    name: 'Pro',
+                    price: 99,
+                    features: ['100,000 API calls/día', '10,000 LLM calls/día', 'Soporte 24/7', 'Webhooks avanzados', 'Todas las integraciones', 'Analytics avanzado']
+                },
+                {
+                    slug: 'enterprise',
+                    name: 'Enterprise',
+                    price: 499,
+                    features: ['API calls ilimitadas', 'LLM calls ilimitadas', 'Soporte dedicado', 'SLA garantizado', 'Despliegue on-premise', 'Personalización completa']
+                }
+            ];
+
+            container.innerHTML = plans.map(plan => {
+                const isCurrent = plan.name === currentPlanName;
+                return `
+                    <div class="plan-card ${isCurrent ? 'current' : ''}">
+                        ${isCurrent ? '<div class="plan-badge">Plan Actual</div>' : ''}
+                        <h3>${plan.name}</h3>
+                        <div class="price">
+                            ${plan.price > 0 ? `$${plan.price}` : 'Gratis'}
+                            ${plan.price > 0 ? '<span>/mes</span>' : ''}
+                        </div>
+                        <ul class="plan-features">
+                            ${plan.features.map(f => `<li>${f}</li>`).join('')}
+                        </ul>
+                        ${!isCurrent ?
+                            `<button class="btn btn-primary" style="width: 100%;" onclick="subscribeToPlan('${plan.slug}')">Mejorar</button>` :
+                            `<button class="btn btn-secondary" style="width: 100%;" disabled>Plan Actual</button>`
+                        }
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Load invoices
+        async function loadInvoices() {
+            try {
+                const response = await fetch('/api/billing/invoices', {
+                    credentials: 'include'
+                });
+
+                if (!response.ok) throw new Error('Failed to load invoices');
+
+                const invoices = await response.json();
+                renderInvoices(invoices);
+            } catch (error) {
+                console.error('Error loading invoices:', error);
+                document.getElementById('invoicesTable').innerHTML =
+                    '<div class="empty-state"><div class="empty-state-icon">📄</div><p>Error al cargar facturas</p></div>';
+            }
+        }
+
+        function renderInvoices(invoices) {
+            const container = document.getElementById('invoicesTable');
+
+            if (!invoices || invoices.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📄</div><p>No hay facturas disponibles</p></div>';
+                return;
+            }
+
+            const statusBadge = (status) => {
+                const badges = {
+                    'paid': '<span class="badge badge-success">Pagado</span>',
+                    'pending': '<span class="badge badge-warning">Pendiente</span>',
+                    'failed': '<span class="badge badge-error">Fallido</span>'
+                };
+                return badges[status] || status;
+            };
+
+            container.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Descripción</th>
+                            <th>Monto</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${invoices.map(invoice => `
+                            <tr>
+                                <td>${new Date(invoice.date).toLocaleDateString('es-ES')}</td>
+                                <td>${invoice.description}</td>
+                                <td class="amount">$${invoice.amount.toFixed(2)}</td>
+                                <td>${statusBadge(invoice.status)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        // Load referral data
+        async function loadReferralData() {
+            try {
+                const response = await fetch('/api/referral', {
+                    credentials: 'include'
+                });
+
+                if (!response.ok) throw new Error('Failed to load referral data');
+
+                const referralData = await response.json();
+                renderReferralSection(referralData);
+            } catch (error) {
+                console.error('Error loading referral data:', error);
+                document.getElementById('referralSection').innerHTML =
+                    '<div class="empty-state"><div class="empty-state-icon">🎁</div><p>Error al cargar datos de referidos</p></div>';
+            }
+        }
+
+        function renderReferralSection(data) {
+            const container = document.getElementById('referralSection');
+            const referralCode = data.code || 'N/A';
+            const referralUrl = `${window.location.origin}/signup?ref=${referralCode}`;
+
+            container.innerHTML = `
+                <div class="referral-code-box">
+                    <div class="referral-code-label">Tu Código de Referido</div>
+                    <div class="referral-code-display">
+                        <div class="referral-code">${referralCode}</div>
+                        <button class="copy-btn" onclick="copyReferralCode('${referralCode}')">Copiar</button>
+                    </div>
+                </div>
+                <div class="referral-url">${referralUrl}</div>
+                <div class="referral-stats">
+                    <div class="referral-stat">
+                        <div class="referral-stat-label">Total Referidos</div>
+                        <div class="referral-stat-value">${data.total_referrals || 0}</div>
+                    </div>
+                    <div class="referral-stat">
+                        <div class="referral-stat-label">Completados</div>
+                        <div class="referral-stat-value">${data.completed_referrals || 0}</div>
+                    </div>
+                    <div class="referral-stat">
+                        <div class="referral-stat-label">Créditos Ganados</div>
+                        <div class="referral-stat-value">${data.credits_earned || 0}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Subscribe to plan
+        async function subscribeToPlan(planSlug) {
+            try {
+                const response = await fetch('/api/billing/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ plan_slug: planSlug })
+                });
+
+                if (!response.ok) throw new Error('Subscription failed');
+
+                const data = await response.json();
+
+                if (data.payment_url) {
+                    // Store pending subscription
+                    pendingSubscription = {
+                        subscription_id: data.subscription_id,
+                        plan_slug: planSlug,
+                        timestamp: Date.now()
+                    };
+                    localStorage.setItem('pending_subscription', JSON.stringify(pendingSubscription));
+
+                    // Open payment in new tab
+                    window.open(data.payment_url, '_blank');
+
+                    // Show verification modal
+                    document.getElementById('paymentModal').classList.add('active');
+                }
+            } catch (error) {
+                console.error('Subscription error:', error);
+                alert('Error al procesar la suscripción. Por favor, intenta de nuevo.');
+            }
+        }
+
+        // Verify payment
+        async function verifyPayment() {
+            if (!pendingSubscription) return;
+
+            try {
+                const response = await fetch('/api/billing/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        subscription_id: pendingSubscription.subscription_id
+                    })
+                });
+
+                if (!response.ok) throw new Error('Verification failed');
+
+                const data = await response.json();
+
+                if (data.success) {
+                    localStorage.removeItem('pending_subscription');
+                    closePaymentModal();
+
+                    // Reload billing data
+                    await loadBillingData();
+
+                    alert('¡Suscripción confirmada exitosamente!');
+                } else {
+                    alert('No se pudo verificar el pago. Por favor, intenta de nuevo en unos momentos.');
+                }
+            } catch (error) {
+                console.error('Verification error:', error);
+                alert('Error al verificar el pago. Por favor, contacta soporte si el problema persiste.');
+            }
+        }
+
+        function checkPendingSubscription() {
+            const pending = localStorage.getItem('pending_subscription');
+            if (pending) {
+                try {
+                    pendingSubscription = JSON.parse(pending);
+                    // Only show modal if subscription is less than 1 hour old
+                    if (Date.now() - pendingSubscription.timestamp < 3600000) {
+                        document.getElementById('paymentModal').classList.add('active');
+                    } else {
+                        localStorage.removeItem('pending_subscription');
+                    }
+                } catch (e) {
+                    localStorage.removeItem('pending_subscription');
+                }
+            }
+        }
+
+        function closePaymentModal() {
+            document.getElementById('paymentModal').classList.remove('active');
+        }
+
+        // Copy referral code
+        function copyReferralCode(code) {
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '¡Copiado!';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Error al copiar el código');
+            });
+        }
+
+        // Scroll to plans
+        function scrollToPlans() {
+            document.getElementById('plansGrid').scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+        }
+
+        // Logout
+        async function logout() {
+            try {
+                await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+            window.location.href = '/login';
+        }
+
+        // Mobile menu
+        function setupMobileMenu() {
+            const toggle = document.getElementById('mobileMenuToggle');
+            const sidebar = document.getElementById('sidebar');
+
+            toggle.addEventListener('click', () => {
+                sidebar.classList.toggle('open');
+            });
+
+            // Close sidebar when clicking outside
+            document.addEventListener('click', (e) => {
+                if (window.innerWidth <= 768 &&
+                    !sidebar.contains(e.target) &&
+                    !toggle.contains(e.target) &&
+                    sidebar.classList.contains('open')) {
+                    sidebar.classList.remove('open');
+                }
+            });
+        }
+    </script>
+</body>
+</html>

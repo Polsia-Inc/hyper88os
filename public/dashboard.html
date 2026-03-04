@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel — Polsia ES</title>
+    <script src="/theme.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -26,6 +27,7 @@
             font-family: 'Space Grotesk', sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
+            transition: background 0.3s, color 0.3s;
             -webkit-font-smoothing: antialiased;
             overflow-x: hidden;
         }
@@ -507,6 +509,10 @@
                         <span class="icon">📈</span>
                         Informes
                     </a>
+                    <a href="/facturacion" class="nav-item" id="facturacionNav">
+                        <span class="icon">💳</span>
+                        Facturación
+                    </a>
                     <a href="#" class="nav-item" data-section="settings">
                         <span class="icon">⚙️</span>
                         Configuración
@@ -535,6 +541,7 @@
             <div class="main-header">
                 <h1 id="pageTitle">Resumen</h1>
                 <div class="header-actions">
+                    <button class="theme-toggle header-btn" id="themeToggle">🌙</button>
                     <button class="header-btn">Exportar</button>
                     <button class="header-btn primary">+ Nuevo Agente</button>
                 </div>
@@ -544,24 +551,20 @@
                 <!-- Stats -->
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-label">Agentes Activos</div>
-                        <div class="stat-value green">0</div>
-                        <div class="stat-change up">Listo para configurar</div>
+                        <div class="stat-label">Plan Actual</div>
+                        <div class="stat-value green" id="planName">-</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">Tareas Hoy</div>
-                        <div class="stat-value amber">0</div>
-                        <div class="stat-change">Sin tareas pendientes</div>
+                        <div class="stat-label">API Calls Hoy</div>
+                        <div class="stat-value amber" id="apiCalls">- / -</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">Tasa de Éxito</div>
-                        <div class="stat-value blue">—</div>
-                        <div class="stat-change">Sin datos aún</div>
+                        <div class="stat-label">LLM Calls Hoy</div>
+                        <div class="stat-value blue" id="llmCalls">- / -</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">Tiempo Ahorrado</div>
-                        <div class="stat-value">0h</div>
-                        <div class="stat-change">Este mes</div>
+                        <div class="stat-label">Créditos</div>
+                        <div class="stat-value" id="credits">-</div>
                     </div>
                 </div>
 
@@ -576,7 +579,7 @@
                         <div class="panel-body">
                             <div class="empty-state">
                                 <div class="icon">📭</div>
-                                <p>No hay actividad reciente. Tus agentes empezarán a trabajar pronto.</p>
+                                <p>No hay actividad reciente</p>
                             </div>
                         </div>
                     </div>
@@ -595,7 +598,7 @@
                                         <div class="agent-name">Marketing</div>
                                         <div class="agent-status">Campañas, email, redes</div>
                                     </div>
-                                    <span class="agent-state idle">inactivo</span>
+                                    <span class="agent-state idle">idle</span>
                                 </div>
                                 <div class="agent-card">
                                     <div class="agent-icon amber">💼</div>
@@ -603,7 +606,7 @@
                                         <div class="agent-name">Ventas</div>
                                         <div class="agent-status">Prospección, seguimiento</div>
                                     </div>
-                                    <span class="agent-state idle">inactivo</span>
+                                    <span class="agent-state idle">idle</span>
                                 </div>
                                 <div class="agent-card">
                                     <div class="agent-icon blue">🛟</div>
@@ -611,7 +614,7 @@
                                         <div class="agent-name">Soporte</div>
                                         <div class="agent-status">Tickets, respuestas, FAQ</div>
                                     </div>
-                                    <span class="agent-state idle">inactivo</span>
+                                    <span class="agent-state idle">idle</span>
                                 </div>
                             </div>
                         </div>
@@ -639,6 +642,38 @@
         }
     }
 
+    // Load dashboard stats
+    async function loadStats() {
+        try {
+            const response = await fetch('/api/dashboard/stats');
+            if (!response.ok) {
+                throw new Error('Failed to load stats');
+            }
+            const stats = await response.json();
+
+            // Populate stats
+            document.getElementById('planName').textContent = stats.plan || 'Free';
+            document.getElementById('apiCalls').textContent = `${stats.apiCallsToday || 0} / ${stats.apiCallsLimit || 0}`;
+            document.getElementById('llmCalls').textContent = `${stats.llmCallsToday || 0} / ${stats.llmCallsLimit || 0}`;
+            document.getElementById('credits').textContent = stats.credits || 0;
+        } catch (error) {
+            console.error('Error loading stats:', error);
+            // Show default values
+            document.getElementById('planName').textContent = 'Free';
+            document.getElementById('apiCalls').textContent = '0 / 100';
+            document.getElementById('llmCalls').textContent = '0 / 50';
+            document.getElementById('credits').textContent = '0';
+        }
+    }
+
+    // Theme toggle
+    const themeToggle = document.getElementById('themeToggle');
+    themeToggle.addEventListener('click', () => {
+        // This will be handled by theme.js
+        const event = new CustomEvent('theme-toggle');
+        window.dispatchEvent(event);
+    });
+
     // Logout
     document.getElementById('logoutBtn').addEventListener('click', async () => {
         await fetch('/api/auth/logout', { method: 'POST' });
@@ -648,6 +683,11 @@
     // Sidebar navigation
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', (e) => {
+            // Skip for Facturación link (let it navigate normally)
+            if (item.id === 'facturacionNav') {
+                return;
+            }
+
             e.preventDefault();
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
             item.classList.add('active');
@@ -661,6 +701,12 @@
                 help: 'Ayuda'
             };
             document.getElementById('pageTitle').textContent = titles[section] || 'Resumen';
+
+            // Close mobile sidebar
+            if (window.innerWidth <= 768) {
+                sidebar.classList.remove('open');
+                overlay.classList.remove('open');
+            }
         });
     });
 
@@ -676,7 +722,11 @@
         overlay.classList.remove('open');
     });
 
-    loadUser();
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        loadUser();
+        loadStats();
+    });
     </script>
 </body>
 </html>
