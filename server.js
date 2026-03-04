@@ -49,6 +49,9 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Trust Render's load balancer (REQUIRED for secure cookies in production)
+app.set('trust proxy', 1);
+
 // Session management
 app.use(session({
   store: new PgSession({
