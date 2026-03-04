@@ -1,0 +1,27 @@
+[
+  {
+    "content": "Explore codebase and understand current structure",
+    "status": "completed",
+    "activeForm": "Exploring codebase structure"
+  },
+  {
+    "content": "Create tasks migration with all required fields",
+    "status": "completed",
+    "activeForm": "Creating tasks database migration"
+  },
+  {
+    "content": "Build REST API endpoints (CRUD + reorder + filter)",
+    "status": "completed",
+    "activeForm": "Building REST API endpoints"
+  },
+  {
+    "content": "Build task queue UI (list view, detail view, creation form)",
+    "status": "completed",
+    "activeForm": "Building task queue UI"
+  },
+  {
+    "content": "Deploy and verify",
+    "status": "in_progress",
+    "activeForm": "Deploying and verifying"
+  }
+]
