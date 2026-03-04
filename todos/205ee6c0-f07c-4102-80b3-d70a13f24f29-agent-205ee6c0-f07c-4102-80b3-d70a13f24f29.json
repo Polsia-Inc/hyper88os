@@ -1,0 +1,37 @@
+[
+  {
+    "content": "Phase 1: Database migration — skills, mcp_servers, api_keys tables",
+    "status": "completed",
+    "activeForm": "Creating database migration for skills, MCP servers, and API keys"
+  },
+  {
+    "content": "Phase 2: API key management + dual auth middleware",
+    "status": "completed",
+    "activeForm": "Building API key management and auth middleware"
+  },
+  {
+    "content": "Phase 3: Skills REST API — CRUD + search",
+    "status": "completed",
+    "activeForm": "Building Skills REST API endpoints"
+  },
+  {
+    "content": "Phase 4: MCP Server Registry API — CRUD + agent mapping",
+    "status": "completed",
+    "activeForm": "Building MCP Server Registry API"
+  },
+  {
+    "content": "Phase 5: Comprehensive REST endpoints + OpenAPI docs (Spanish)",
+    "status": "completed",
+    "activeForm": "Building REST endpoints and Swagger docs"
+  },
+  {
+    "content": "Phase 6: Dashboard UI — Skills browser + MCP management + API docs pages",
+    "status": "completed",
+    "activeForm": "Building dashboard UI for skills, MCP, and API docs"
+  },
+  {
+    "content": "Phase 7: Deploy + verify",
+    "status": "in_progress",
+    "activeForm": "Deploying and verifying everything works"
+  }
+]
