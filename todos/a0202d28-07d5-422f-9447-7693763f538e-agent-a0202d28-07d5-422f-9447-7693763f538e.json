@@ -1,0 +1,32 @@
+[
+  {
+    "content": "Install dependencies + create database migrations",
+    "status": "completed",
+    "activeForm": "Installing dependencies and creating database schema"
+  },
+  {
+    "content": "Build i18n system + auth backend + server rewrite",
+    "status": "completed",
+    "activeForm": "Building i18n system and auth backend"
+  },
+  {
+    "content": "Build Spanish landing page with design system",
+    "status": "completed",
+    "activeForm": "Building Spanish landing page"
+  },
+  {
+    "content": "Build auth UI pages (login/signup) in Spanish",
+    "status": "completed",
+    "activeForm": "Building auth UI pages in Spanish"
+  },
+  {
+    "content": "Build dashboard layout with sidebar",
+    "status": "completed",
+    "activeForm": "Building dashboard layout"
+  },
+  {
+    "content": "Push + deploy + verify",
+    "status": "in_progress",
+    "activeForm": "Deploying and verifying"
+  }
+]
