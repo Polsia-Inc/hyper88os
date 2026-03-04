@@ -1,0 +1,22 @@
+[
+  {
+    "content": "Check production logs for auth errors",
+    "status": "completed",
+    "activeForm": "Checking production logs for auth errors"
+  },
+  {
+    "content": "Add trust proxy configuration to server.js",
+    "status": "completed",
+    "activeForm": "Adding trust proxy configuration to server.js"
+  },
+  {
+    "content": "Deploy fix to production",
+    "status": "in_progress",
+    "activeForm": "Deploying fix to production"
+  },
+  {
+    "content": "Verify login works on production",
+    "status": "pending",
+    "activeForm": "Verifying login works on production"
+  }
+]
