@@ -1,40 +1,601 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome</title>
+    <title>Polsia ES — Agentes de IA para tu Negocio</title>
+    <meta name="description" content="Automatiza marketing, ventas, soporte y operaciones con agentes inteligentes de IA que trabajan 24/7 para tu empresa.">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #111118;
+            --bg-card: #16161f;
+            --border: #1e1e2a;
+            --text-primary: #e8e8ed;
+            --text-secondary: #8888a0;
+            --text-dim: #55556a;
+            --accent: #00e599;
+            --accent-dim: #00e59920;
+            --amber: #ffb800;
+            --red: #ff4466;
+            --blue: #4488ff;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        .grid-bg {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image:
+                linear-gradient(var(--border) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 60px 60px;
+            opacity: 0.15;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Nav */
+        nav {
+            padding: 24px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+        }
+        .logo {
+            font-weight: 700;
+            font-size: 18px;
+            letter-spacing: -0.5px;
+        }
+        .logo span { color: var(--accent); }
+        .nav-status {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .nav-status::before {
+            content: '';
+            width: 6px; height: 6px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--text-primary); }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            text-decoration: none;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: var(--bg-primary);
+        }
+        .btn-primary:hover {
+            background: #00cc88;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(0, 229, 153, 0.3);
+        }
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover {
+            border-color: var(--text-dim);
+            background: var(--bg-secondary);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* Hero */
+        .hero {
+            padding: 100px 0 80px;
+            text-align: center;
+        }
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--accent);
+            margin-bottom: 32px;
+            background: var(--accent-dim);
+        }
+        .hero h1 {
+            font-size: clamp(36px, 6vw, 64px);
+            font-weight: 700;
+            line-height: 1.1;
+            letter-spacing: -2px;
+            margin-bottom: 24px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .hero h1 .highlight { color: var(--accent); }
+        .hero p {
+            font-size: 18px;
+            color: var(--text-secondary);
+            max-width: 560px;
+            margin: 0 auto 40px;
+            line-height: 1.6;
+        }
+        .hero-actions {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        /* Stats bar */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 0 0 100px;
+        }
+        .stat-item {
+            background: var(--bg-secondary);
+            padding: 28px 24px;
+            text-align: center;
+        }
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 4px;
+        }
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Features */
+        .section-title {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        .section-title h2 {
+            font-size: 36px;
+            font-weight: 700;
+            letter-spacing: -1px;
+            margin-bottom: 12px;
+        }
+        .section-title p {
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 100px;
+        }
+        .feature-card {
+            background: var(--bg-secondary);
+            padding: 40px 32px;
+            transition: background 0.2s;
+        }
+        .feature-card:hover { background: var(--bg-card); }
+        .feature-icon {
+            width: 40px; height: 40px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            background: #fafafa;
-            color: #1a1a1a;
+            font-size: 20px;
+            margin-bottom: 20px;
         }
-        .container {
+        .feature-icon.green { background: var(--accent-dim); }
+        .feature-icon.amber { background: #ffb80020; }
+        .feature-icon.blue { background: #4488ff20; }
+        .feature-icon.red { background: #ff446620; }
+        .feature-card h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* Pricing */
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 100px;
+        }
+        .pricing-card {
+            background: var(--bg-secondary);
+            padding: 40px 32px;
+            display: flex;
+            flex-direction: column;
+        }
+        .pricing-card.featured {
+            background: var(--bg-card);
+            position: relative;
+        }
+        .pricing-card.featured::before {
+            content: 'POPULAR';
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            padding: 4px 8px;
+            background: var(--accent);
+            color: var(--bg-primary);
+            border-radius: 4px;
+            font-weight: 700;
+        }
+        .pricing-name {
+            font-size: 14px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+        .pricing-price {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .pricing-period {
+            font-size: 14px;
+            color: var(--text-dim);
+            margin-bottom: 24px;
+        }
+        .pricing-features {
+            list-style: none;
+            flex: 1;
+            margin-bottom: 24px;
+        }
+        .pricing-features li {
+            padding: 8px 0;
+            font-size: 14px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .pricing-features li::before {
+            content: '✓';
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 12px;
+        }
+
+        /* CTA */
+        .cta-section {
             text-align: center;
-            padding: 40px;
+            padding: 80px 0;
+            border-top: 1px solid var(--border);
+            margin-bottom: 40px;
         }
-        h1 { font-size: 2rem; margin-bottom: 16px; }
-        p { color: #666; font-size: 1.1rem; }
+        .cta-section h2 {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -1px;
+            margin-bottom: 12px;
+        }
+        .cta-section p {
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+            font-size: 16px;
+        }
+
+        /* Footer */
+        footer {
+            padding: 32px 0;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+        footer span {
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+        footer .logo {
+            font-size: 14px;
+        }
+
+        /* Terminal animation */
+        .terminal {
+            max-width: 600px;
+            margin: 60px auto 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .terminal-header {
+            padding: 12px 16px;
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .terminal-dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+        }
+        .terminal-dot.r { background: var(--red); }
+        .terminal-dot.y { background: var(--amber); }
+        .terminal-dot.g { background: var(--accent); }
+        .terminal-body {
+            padding: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 2;
+            min-height: 180px;
+        }
+        .terminal-line {
+            opacity: 0;
+            animation: fadeIn 0.5s ease forwards;
+        }
+        .terminal-line:nth-child(1) { animation-delay: 0.3s; }
+        .terminal-line:nth-child(2) { animation-delay: 1s; }
+        .terminal-line:nth-child(3) { animation-delay: 1.7s; }
+        .terminal-line:nth-child(4) { animation-delay: 2.4s; }
+        .terminal-line:nth-child(5) { animation-delay: 3.1s; }
+        .terminal-prompt { color: var(--accent); }
+        .terminal-cmd { color: var(--text-primary); }
+        .terminal-output { color: var(--text-dim); }
+        .terminal-success { color: var(--accent); }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .stats-bar { grid-template-columns: repeat(2, 1fr); }
+            .features-grid { grid-template-columns: 1fr; }
+            .pricing-grid { grid-template-columns: 1fr; }
+            .nav-links { gap: 12px; }
+            .hero { padding: 60px 0 40px; }
+            .hero-actions { flex-direction: column; align-items: center; }
+            footer { flex-direction: column; gap: 16px; text-align: center; }
+        }
+        @media (max-width: 480px) {
+            .stats-bar { grid-template-columns: 1fr; }
+            .nav-status { display: none; }
+        }
     </style>
 </head>
 <body>
+    <div class="grid-bg"></div>
+
     <div class="container">
-        <h1>Welcome to your app</h1>
-        <p>Built with Polsia</p>
+        <!-- Navigation -->
+        <nav>
+            <div class="logo">polsia<span>.es</span></div>
+            <div class="nav-status">sistema activo</div>
+            <div class="nav-links">
+                <a href="#funciones">Funciones</a>
+                <a href="#precios">Precios</a>
+                <a href="/login" class="btn btn-secondary">Entrar</a>
+                <a href="/signup" class="btn btn-primary">Comenzar</a>
+            </div>
+        </nav>
+
+        <!-- Hero -->
+        <section class="hero">
+            <div class="hero-badge">
+                <span>●</span> Plataforma de IA autónoma para empresas
+            </div>
+            <h1>Agentes de IA que<br><span class="highlight">operan tu negocio</span></h1>
+            <p>Automatiza marketing, ventas, soporte y operaciones con agentes inteligentes que trabajan 24/7 para tu empresa.</p>
+            <div class="hero-actions">
+                <a href="/signup" class="btn btn-primary">Comenzar Gratis →</a>
+                <a href="#funciones" class="btn btn-secondary">Ver Funciones</a>
+            </div>
+
+            <!-- Terminal demo -->
+            <div class="terminal">
+                <div class="terminal-header">
+                    <div class="terminal-dot r"></div>
+                    <div class="terminal-dot y"></div>
+                    <div class="terminal-dot g"></div>
+                </div>
+                <div class="terminal-body">
+                    <div class="terminal-line"><span class="terminal-prompt">$</span> <span class="terminal-cmd">polsia iniciar --agente marketing</span></div>
+                    <div class="terminal-line"><span class="terminal-output">→ Analizando audiencia objetivo...</span></div>
+                    <div class="terminal-line"><span class="terminal-output">→ Generando campaña de email...</span></div>
+                    <div class="terminal-line"><span class="terminal-output">→ Publicando en redes sociales...</span></div>
+                    <div class="terminal-line"><span class="terminal-success">✓ 3 tareas completadas en 2.4s</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stats -->
+        <div class="stats-bar">
+            <div class="stat-item">
+                <div class="stat-value">500+</div>
+                <div class="stat-label">Negocios activos</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">12K+</div>
+                <div class="stat-label">Tareas completadas</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">99.9%</div>
+                <div class="stat-label">Disponibilidad</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">40%</div>
+                <div class="stat-label">Ahorro promedio</div>
+            </div>
+        </div>
+
+        <!-- Features -->
+        <section id="funciones">
+            <div class="section-title">
+                <h2>Todo lo que necesitas para escalar</h2>
+                <p>Una plataforma completa con agentes de IA especializados para cada área de tu negocio.</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon green">🤖</div>
+                    <h3>Agentes Autónomos</h3>
+                    <p>Agentes de IA que ejecutan tareas complejas sin supervisión. Marketing, ventas, soporte — todo automatizado con inteligencia.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon amber">📋</div>
+                    <h3>Gestión de Tareas</h3>
+                    <p>Asigna trabajo a tus agentes y monitorea el progreso en tiempo real. Sin microgestión, solo resultados.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon blue">📊</div>
+                    <h3>Analítica Inteligente</h3>
+                    <p>Informes automáticos sobre rendimiento, métricas clave y oportunidades de mejora detectadas por IA.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon red">🔗</div>
+                    <h3>Integraciones Nativas</h3>
+                    <p>Conecta con Stripe, email, redes sociales y más. Todo funciona desde el primer día sin configuración.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pricing -->
+        <section id="precios">
+            <div class="section-title">
+                <h2>Precios Simples</h2>
+                <p>Sin sorpresas. Paga solo por lo que usas.</p>
+            </div>
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <div class="pricing-name">Gratis</div>
+                    <div class="pricing-price">$0</div>
+                    <div class="pricing-period">por siempre</div>
+                    <ul class="pricing-features">
+                        <li>1 agente activo</li>
+                        <li>Tareas básicas</li>
+                        <li>Panel de control</li>
+                        <li>Soporte por email</li>
+                    </ul>
+                    <a href="/signup" class="btn btn-secondary" style="width:100%">Comenzar</a>
+                </div>
+                <div class="pricing-card featured">
+                    <div class="pricing-name">Pro</div>
+                    <div class="pricing-price">$29</div>
+                    <div class="pricing-period">por mes</div>
+                    <ul class="pricing-features">
+                        <li>Agentes ilimitados</li>
+                        <li>Tareas prioritarias</li>
+                        <li>Analítica avanzada</li>
+                        <li>Integraciones premium</li>
+                        <li>Soporte prioritario</li>
+                    </ul>
+                    <a href="/signup" class="btn btn-primary" style="width:100%">Elegir Pro</a>
+                </div>
+                <div class="pricing-card">
+                    <div class="pricing-name">Empresa</div>
+                    <div class="pricing-price">Contactar</div>
+                    <div class="pricing-period">&nbsp;</div>
+                    <ul class="pricing-features">
+                        <li>Todo en Pro</li>
+                        <li>API dedicada</li>
+                        <li>SLA garantizado</li>
+                        <li>Onboarding personalizado</li>
+                        <li>Soporte dedicado</li>
+                    </ul>
+                    <a href="mailto:hola@polsia.es" class="btn btn-secondary" style="width:100%">Contactar</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA -->
+        <section class="cta-section">
+            <h2>¿Listo para automatizar tu negocio?</h2>
+            <p>Únete a cientos de empresas que ya usan agentes de IA para crecer más rápido.</p>
+            <a href="/signup" class="btn btn-primary">Empezar Ahora →</a>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <div class="logo">polsia<span>.es</span></div>
+            <span>© 2026 Polsia ES. Todos los derechos reservados.</span>
+        </footer>
     </div>
 
-    <!-- Polsia Analytics - tracks page views for your dashboard -->
+    <!-- Polsia Analytics -->
     <script>
     (function() {
         var slug = 'hyper88os';
         if (!slug || slug === '__POLSIA_' + 'SLUG__') return;
-
         var vid = localStorage.getItem('polsia_vid');
         if (!vid) {
             vid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {

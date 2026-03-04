@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear Cuenta — Polsia ES</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #111118;
+            --bg-card: #16161f;
+            --border: #1e1e2a;
+            --text-primary: #e8e8ed;
+            --text-secondary: #8888a0;
+            --text-dim: #55556a;
+            --accent: #00e599;
+            --accent-dim: #00e59920;
+            --red: #ff4466;
+        }
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-font-smoothing: antialiased;
+        }
+        .grid-bg {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image:
+                linear-gradient(var(--border) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 60px 60px;
+            opacity: 0.15;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .auth-container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 420px;
+            padding: 24px;
+        }
+        .auth-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .logo {
+            font-weight: 700;
+            font-size: 20px;
+            letter-spacing: -0.5px;
+            margin-bottom: 32px;
+        }
+        .logo span { color: var(--accent); }
+        .logo a {
+            color: inherit;
+            text-decoration: none;
+        }
+        .auth-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+        .auth-header p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        .auth-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-dim);
+        }
+        .form-group input::placeholder {
+            color: var(--text-dim);
+        }
+        .error-msg {
+            background: #ff446615;
+            border: 1px solid #ff446640;
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: var(--red);
+            font-size: 13px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .error-msg.visible { display: block; }
+        .password-requirements {
+            margin-bottom: 20px;
+            padding: 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .password-requirements .title {
+            font-size: 12px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+        .requirement {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 4px 0;
+            font-size: 13px;
+            color: var(--text-dim);
+            transition: color 0.2s;
+        }
+        .requirement .icon {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .requirement.met {
+            color: var(--accent);
+        }
+        .requirement.met .icon {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: var(--bg-primary);
+        }
+        .requirement.met .icon::after {
+            content: '✓';
+            font-weight: 700;
+        }
+        .btn {
+            width: 100%;
+            padding: 14px 20px;
+            border-radius: 8px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 15px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--accent);
+            color: var(--bg-primary);
+        }
+        .btn:hover {
+            background: #00cc88;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(0, 229, 153, 0.3);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .auth-footer {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        .auth-footer a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .auth-footer a:hover {
+            text-decoration: underline;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 13px;
+            margin-top: 20px;
+            transition: color 0.2s;
+        }
+        .back-link:hover { color: var(--text-secondary); }
+    </style>
+</head>
+<body>
+    <div class="grid-bg"></div>
+    <div class="auth-container">
+        <div class="auth-header">
+            <div class="logo"><a href="/">polsia<span>.es</span></a></div>
+            <h1>Crear Cuenta</h1>
+            <p>Comienza a automatizar tu negocio</p>
+        </div>
+
+        <div class="auth-card">
+            <div class="error-msg" id="errorMsg"></div>
+            <form id="signupForm">
+                <div class="form-group">
+                    <label for="name">Nombre completo</label>
+                    <input type="text" id="name" name="name" placeholder="Juan García" autocomplete="name">
+                </div>
+                <div class="form-group">
+                    <label for="email">Correo electrónico</label>
+                    <input type="email" id="email" name="email" placeholder="tu@empresa.com" required autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label for="password">Contraseña</label>
+                    <input type="password" id="password" name="password" placeholder="Crea una contraseña segura" required autocomplete="new-password">
+                </div>
+
+                <div class="password-requirements">
+                    <div class="title">La contraseña debe contener:</div>
+                    <div class="requirement" id="req-length">
+                        <div class="icon"></div>
+                        <span>Al menos 10 caracteres</span>
+                    </div>
+                    <div class="requirement" id="req-letter">
+                        <div class="icon"></div>
+                        <span>Al menos 1 letra</span>
+                    </div>
+                    <div class="requirement" id="req-number">
+                        <div class="icon"></div>
+                        <span>Al menos 1 número</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">Confirmar contraseña</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Repite tu contraseña" required autocomplete="new-password">
+                </div>
+
+                <button type="submit" class="btn" id="submitBtn" disabled>Crear Cuenta</button>
+            </form>
+        </div>
+
+        <div class="auth-footer">
+            ¿Ya tienes cuenta? <a href="/login">Iniciar sesión</a>
+        </div>
+        <div style="text-align:center">
+            <a href="/" class="back-link">← Volver al inicio</a>
+        </div>
+    </div>
+
+    <script>
+    const form = document.getElementById('signupForm');
+    const errorMsg = document.getElementById('errorMsg');
+    const submitBtn = document.getElementById('submitBtn');
+    const passwordInput = document.getElementById('password');
+    const confirmInput = document.getElementById('confirmPassword');
+
+    function updateRequirementUI(id, met) {
+        const el = document.getElementById(id);
+        if (met) {
+            el.classList.add('met');
+        } else {
+            el.classList.remove('met');
+        }
+    }
+
+    function validateForm() {
+        const password = passwordInput.value;
+        const confirm = confirmInput.value;
+        const lengthOk = password.length >= 10;
+        const letterOk = /[a-zA-Z]/.test(password);
+        const numberOk = /[0-9]/.test(password);
+        const matchOk = password === confirm && confirm.length > 0;
+
+        updateRequirementUI('req-length', lengthOk);
+        updateRequirementUI('req-letter', letterOk);
+        updateRequirementUI('req-number', numberOk);
+
+        submitBtn.disabled = !(lengthOk && letterOk && numberOk && matchOk);
+    }
+
+    passwordInput.addEventListener('input', validateForm);
+    confirmInput.addEventListener('input', validateForm);
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        errorMsg.classList.remove('visible');
+
+        const password = passwordInput.value;
+        const confirm = confirmInput.value;
+
+        if (password !== confirm) {
+            errorMsg.textContent = 'Las contraseñas no coinciden';
+            errorMsg.classList.add('visible');
+            return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Creando cuenta...';
+
+        try {
+            const res = await fetch('/api/auth/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: document.getElementById('name').value,
+                    email: document.getElementById('email').value,
+                    password: password
+                })
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                window.location.href = '/dashboard';
+            } else {
+                errorMsg.textContent = data.error || 'Error al crear la cuenta';
+                errorMsg.classList.add('visible');
+            }
+        } catch (err) {
+            errorMsg.textContent = 'Error de conexión. Inténtalo de nuevo.';
+            errorMsg.classList.add('visible');
+        }
+
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Crear Cuenta';
+        validateForm();
+    });
+    </script>
+</body>
+</html>

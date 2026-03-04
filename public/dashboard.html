@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel — Polsia ES</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #111118;
+            --bg-card: #16161f;
+            --border: #1e1e2a;
+            --text-primary: #e8e8ed;
+            --text-secondary: #8888a0;
+            --text-dim: #55556a;
+            --accent: #00e599;
+            --accent-dim: #00e59920;
+            --amber: #ffb800;
+            --red: #ff4466;
+            --blue: #4488ff;
+            --sidebar-width: 260px;
+        }
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* Layout */
+        .app-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 10;
+            transition: transform 0.3s;
+        }
+        .sidebar-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .sidebar-logo {
+            font-weight: 700;
+            font-size: 18px;
+            letter-spacing: -0.5px;
+        }
+        .sidebar-logo span { color: var(--accent); }
+        .sidebar-status {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .sidebar-status::before {
+            content: '';
+            width: 5px; height: 5px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .sidebar-nav {
+            flex: 1;
+            padding: 16px 12px;
+        }
+        .nav-section {
+            margin-bottom: 24px;
+        }
+        .nav-section-title {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-dim);
+            padding: 0 12px;
+            margin-bottom: 8px;
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.15s;
+            cursor: pointer;
+        }
+        .nav-item:hover {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+        .nav-item.active {
+            background: var(--accent-dim);
+            color: var(--accent);
+        }
+        .nav-item .icon {
+            width: 20px;
+            text-align: center;
+            font-size: 16px;
+        }
+        .nav-item .badge {
+            margin-left: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            padding: 2px 8px;
+            background: var(--accent-dim);
+            color: var(--accent);
+            border-radius: 100px;
+        }
+
+        .sidebar-footer {
+            padding: 16px;
+            border-top: 1px solid var(--border);
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .user-info:hover { background: var(--bg-card); }
+        .user-avatar {
+            width: 34px; height: 34px;
+            border-radius: 8px;
+            background: var(--accent-dim);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .user-details {
+            flex: 1;
+            min-width: 0;
+        }
+        .user-name {
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .user-email {
+            font-size: 11px;
+            color: var(--text-dim);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .logout-btn {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 16px;
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.15s;
+        }
+        .logout-btn:hover {
+            color: var(--red);
+            background: #ff446615;
+        }
+
+        /* Main content */
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            padding: 0;
+        }
+        .main-header {
+            padding: 20px 32px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-primary);
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+        .main-header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+        }
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+        .header-btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 500;
+            font-size: 13px;
+            text-decoration: none;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .header-btn:hover {
+            border-color: var(--text-dim);
+            color: var(--text-primary);
+        }
+        .header-btn.primary {
+            background: var(--accent);
+            color: var(--bg-primary);
+            border-color: var(--accent);
+        }
+        .header-btn.primary:hover {
+            background: #00cc88;
+        }
+
+        .main-body {
+            padding: 32px;
+        }
+
+        /* Stats cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 32px;
+        }
+        .stat-card {
+            background: var(--bg-secondary);
+            padding: 24px;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 32px;
+            font-weight: 700;
+        }
+        .stat-value.green { color: var(--accent); }
+        .stat-value.amber { color: var(--amber); }
+        .stat-value.blue { color: var(--blue); }
+        .stat-change {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            margin-top: 4px;
+        }
+        .stat-change.up { color: var(--accent); }
+        .stat-change.down { color: var(--red); }
+
+        /* Content sections */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        .content-panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .panel-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .panel-badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            padding: 3px 10px;
+            border-radius: 100px;
+            background: var(--bg-card);
+            color: var(--text-dim);
+        }
+        .panel-body {
+            padding: 20px;
+        }
+
+        /* Activity list */
+        .activity-list {
+            list-style: none;
+        }
+        .activity-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .activity-item:last-child { border-bottom: none; }
+        .activity-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            margin-top: 6px;
+            flex-shrink: 0;
+        }
+        .activity-dot.green { background: var(--accent); }
+        .activity-dot.amber { background: var(--amber); }
+        .activity-dot.blue { background: var(--blue); }
+        .activity-text {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .activity-text strong { color: var(--text-primary); font-weight: 600; }
+        .activity-time {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+
+        /* Agent cards */
+        .agent-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .agent-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            transition: border-color 0.15s;
+        }
+        .agent-card:hover { border-color: var(--text-dim); }
+        .agent-icon {
+            width: 36px; height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .agent-icon.green { background: var(--accent-dim); }
+        .agent-icon.amber { background: #ffb80020; }
+        .agent-icon.blue { background: #4488ff20; }
+        .agent-info { flex: 1; }
+        .agent-name {
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .agent-status {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+        .agent-state {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 100px;
+        }
+        .agent-state.active {
+            background: var(--accent-dim);
+            color: var(--accent);
+        }
+        .agent-state.idle {
+            background: var(--bg-primary);
+            color: var(--text-dim);
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        .empty-state .icon {
+            font-size: 40px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        .empty-state p {
+            color: var(--text-dim);
+            font-size: 14px;
+            max-width: 280px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* Mobile */
+        .mobile-toggle {
+            display: none;
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 20;
+            width: 40px; height: 40px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 20px;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+        }
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 9;
+        }
+
+        @media (max-width: 1024px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .content-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 768px) {
+            .mobile-toggle { display: flex; }
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            .main-content { margin-left: 0; }
+            .main-header { padding-left: 64px; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 480px) {
+            .stats-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Mobile toggle -->
+    <button class="mobile-toggle" id="mobileToggle">☰</button>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">polsia<span>.es</span></div>
+                <div class="sidebar-status">activo</div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Principal</div>
+                    <a href="#" class="nav-item active" data-section="overview">
+                        <span class="icon">📊</span>
+                        Resumen
+                    </a>
+                    <a href="#" class="nav-item" data-section="agents">
+                        <span class="icon">🤖</span>
+                        Agentes
+                        <span class="badge">0</span>
+                    </a>
+                    <a href="#" class="nav-item" data-section="tasks">
+                        <span class="icon">📋</span>
+                        Tareas
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Herramientas</div>
+                    <a href="#" class="nav-item" data-section="reports">
+                        <span class="icon">📈</span>
+                        Informes
+                    </a>
+                    <a href="#" class="nav-item" data-section="settings">
+                        <span class="icon">⚙️</span>
+                        Configuración
+                    </a>
+                    <a href="#" class="nav-item" data-section="help">
+                        <span class="icon">💡</span>
+                        Ayuda
+                    </a>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar">?</div>
+                    <div class="user-details">
+                        <div class="user-name" id="userName">Cargando...</div>
+                        <div class="user-email" id="userEmail"></div>
+                    </div>
+                    <button class="logout-btn" id="logoutBtn" title="Cerrar sesión">⏻</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="main-header">
+                <h1 id="pageTitle">Resumen</h1>
+                <div class="header-actions">
+                    <button class="header-btn">Exportar</button>
+                    <button class="header-btn primary">+ Nuevo Agente</button>
+                </div>
+            </div>
+
+            <div class="main-body">
+                <!-- Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Agentes Activos</div>
+                        <div class="stat-value green">0</div>
+                        <div class="stat-change up">Listo para configurar</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Tareas Hoy</div>
+                        <div class="stat-value amber">0</div>
+                        <div class="stat-change">Sin tareas pendientes</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Tasa de Éxito</div>
+                        <div class="stat-value blue">—</div>
+                        <div class="stat-change">Sin datos aún</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Tiempo Ahorrado</div>
+                        <div class="stat-value">0h</div>
+                        <div class="stat-change">Este mes</div>
+                    </div>
+                </div>
+
+                <!-- Content grid -->
+                <div class="content-grid">
+                    <!-- Recent activity -->
+                    <div class="content-panel">
+                        <div class="panel-header">
+                            <div class="panel-title">Actividad Reciente</div>
+                            <div class="panel-badge">hoy</div>
+                        </div>
+                        <div class="panel-body">
+                            <div class="empty-state">
+                                <div class="icon">📭</div>
+                                <p>No hay actividad reciente. Tus agentes empezarán a trabajar pronto.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Agents -->
+                    <div class="content-panel">
+                        <div class="panel-header">
+                            <div class="panel-title">Tus Agentes</div>
+                            <div class="panel-badge">0 activos</div>
+                        </div>
+                        <div class="panel-body">
+                            <div class="agent-list">
+                                <div class="agent-card">
+                                    <div class="agent-icon green">🎯</div>
+                                    <div class="agent-info">
+                                        <div class="agent-name">Marketing</div>
+                                        <div class="agent-status">Campañas, email, redes</div>
+                                    </div>
+                                    <span class="agent-state idle">inactivo</span>
+                                </div>
+                                <div class="agent-card">
+                                    <div class="agent-icon amber">💼</div>
+                                    <div class="agent-info">
+                                        <div class="agent-name">Ventas</div>
+                                        <div class="agent-status">Prospección, seguimiento</div>
+                                    </div>
+                                    <span class="agent-state idle">inactivo</span>
+                                </div>
+                                <div class="agent-card">
+                                    <div class="agent-icon blue">🛟</div>
+                                    <div class="agent-info">
+                                        <div class="agent-name">Soporte</div>
+                                        <div class="agent-status">Tickets, respuestas, FAQ</div>
+                                    </div>
+                                    <span class="agent-state idle">inactivo</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+    // Load user data
+    async function loadUser() {
+        try {
+            const res = await fetch('/api/auth/me');
+            if (!res.ok) {
+                window.location.href = '/login';
+                return;
+            }
+            const { user } = await res.json();
+            document.getElementById('userName').textContent = user.name || user.email.split('@')[0];
+            document.getElementById('userEmail').textContent = user.email;
+            document.getElementById('userAvatar').textContent = (user.name || user.email)[0].toUpperCase();
+        } catch (err) {
+            window.location.href = '/login';
+        }
+    }
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        window.location.href = '/';
+    });
+
+    // Sidebar navigation
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+            const section = item.dataset.section;
+            const titles = {
+                overview: 'Resumen',
+                agents: 'Agentes',
+                tasks: 'Tareas',
+                reports: 'Informes',
+                settings: 'Configuración',
+                help: 'Ayuda'
+            };
+            document.getElementById('pageTitle').textContent = titles[section] || 'Resumen';
+        });
+    });
+
+    // Mobile sidebar toggle
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    document.getElementById('mobileToggle').addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('open');
+    });
+    overlay.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('open');
+    });
+
+    loadUser();
+    </script>
+</body>
+</html>
