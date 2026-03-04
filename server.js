@@ -36,6 +36,16 @@ const PLAN_DETAILS = {
   enterprise: { name: 'Enterprise', price: 199, api_daily: 100000, llm_daily: 10000, companies: -1, credits: 500 }
 };
 
+// Request logging middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`${req.method} ${req.path} ${res.statusCode} ${duration}ms`);
+  });
+  next();
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -82,8 +92,54 @@ app.use(async (req, res, next) => {
 });
 
 // Health check (required for Render)
-app.get('/health', (req, res) => {
-  res.json({ status: 'healthy' });
+app.get('/health', async (req, res) => {
+  const health = {
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    version: require('./package.json').version
+  };
+
+  // Check database connectivity
+  try {
+    const result = await pool.query('SELECT NOW() as db_time');
+    health.database = {
+      status: 'connected',
+      latency_ms: Date.now() - new Date(result.rows[0].db_time).getTime()
+    };
+  } catch (err) {
+    health.status = 'unhealthy';
+    health.database = {
+      status: 'disconnected',
+      error: err.message
+    };
+    return res.status(503).json(health);
+  }
+
+  // Check required environment variables
+  const requiredEnvVars = ['DATABASE_URL', 'POLSIA_API_KEY', 'OPENAI_API_KEY'];
+  const missingEnvVars = requiredEnvVars.filter(v => !process.env[v]);
+  if (missingEnvVars.length > 0) {
+    health.status = 'degraded';
+    health.environment_vars = {
+      status: 'incomplete',
+      missing: missingEnvVars
+    };
+  } else {
+    health.environment_vars = {
+      status: 'complete'
+    };
+  }
+
+  const statusCode = health.status === 'healthy' ? 200 : 503;
+  res.status(statusCode).json(health);
+});
+
+// API health check endpoint (alias for /health)
+app.get('/api/health', async (req, res) => {
+  req.url = '/health';
+  app.handle(req, res);
 });
 
 // Serve static files
@@ -683,6 +739,46 @@ app.get('/facturacion', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'billing.html'));
 });
 
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Error:', err.message);
+  console.error('Stack:', err.stack);
+
+  // Don't leak error details in production
+  const errorResponse = {
+    error: process.env.NODE_ENV === 'production'
+      ? 'Error interno del servidor'
+      : err.message
+  };
+
+  res.status(500).json(errorResponse);
+});
+
+// Handle 404s
+app.use((req, res) => {
+  res.status(404).json({ error: 'Ruta no encontrada' });
+});
+
+// Process error handlers
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  await pool.end();
+  process.exit(0);
+});
+
 app.listen(port, () => {
   console.log(`Polsia ES running on port ${port}`);
+  console.log(`Environment: ${process.env.NODE_ENV}`);
+  console.log(`Health check: http://localhost:${port}/health`);
 });

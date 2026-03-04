@@ -3,6 +3,7 @@ node_modules/
 .DS_Store
 # Polsia safety (auto-injected, do not commit)
 .env.*
+!.env.example
 .claude/
 projects/
 *.jsonl

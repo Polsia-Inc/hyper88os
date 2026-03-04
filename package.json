@@ -1,7 +1,11 @@
 {
-  "name": "express-postgres-starter",
+  "name": "hyper88os",
   "version": "1.0.0",
+  "description": "Polsia ES - Plataforma de agentes autónomos de IA",
   "main": "server.js",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
@@ -16,5 +20,9 @@
     "express-session": "^1.19.0",
     "openai": "^4.77.0",
     "pg": "^8.11.3"
-  }
+  },
+  "keywords": ["polsia", "ai", "agents", "autonomous", "saas"],
+  "author": "Polsia",
+  "license": "UNLICENSED",
+  "private": true
 }
