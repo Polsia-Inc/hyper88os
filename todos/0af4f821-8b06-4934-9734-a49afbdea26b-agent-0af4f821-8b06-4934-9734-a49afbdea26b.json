@@ -1,0 +1,27 @@
+[
+  {
+    "content": "Create memory_layers migration with token budget enforcement",
+    "status": "completed",
+    "activeForm": "Creating memory_layers database migration"
+  },
+  {
+    "content": "Build REST API endpoints: search_memory, read_memory, update_memory",
+    "status": "completed",
+    "activeForm": "Building memory REST API endpoints"
+  },
+  {
+    "content": "Add auto-curation logic for Layer 1 & 3 after task completion",
+    "status": "completed",
+    "activeForm": "Adding auto-curation logic"
+  },
+  {
+    "content": "Build dashboard UI: memory viewer, Layer 2 editor, token indicators (Spanish)",
+    "status": "completed",
+    "activeForm": "Building memory dashboard UI"
+  },
+  {
+    "content": "Deploy and verify end-to-end",
+    "status": "in_progress",
+    "activeForm": "Deploying and verifying"
+  }
+]
