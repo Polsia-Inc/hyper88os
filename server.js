@@ -656,7 +656,335 @@ app.post('/api/settings', requireAuth, async (req, res) => {
   }
 });
 
+// ====== TASKS API ======
+
+// List tasks (with filtering)
+app.get('/api/tasks', requireAuth, async (req, res) => {
+  try {
+    const { status, tag, priority, search, sort = 'sort_order', order = 'asc' } = req.query;
+
+    let query = `SELECT t.*, u.name as creator_name FROM tasks t
+                 LEFT JOIN users u ON t.created_by = u.id
+                 WHERE t.created_by = $1`;
+    const params = [req.user.id];
+    let paramIdx = 2;
+
+    if (status && status !== 'all') {
+      query += ` AND t.status = $${paramIdx}`;
+      params.push(status);
+      paramIdx++;
+    }
+    if (tag && tag !== 'all') {
+      query += ` AND t.tag = $${paramIdx}`;
+      params.push(tag);
+      paramIdx++;
+    }
+    if (priority && priority !== 'all') {
+      query += ` AND t.priority = $${paramIdx}`;
+      params.push(priority);
+      paramIdx++;
+    }
+    if (search) {
+      query += ` AND (t.title ILIKE $${paramIdx} OR t.description ILIKE $${paramIdx})`;
+      params.push(`%${search}%`);
+      paramIdx++;
+    }
+
+    // Sorting
+    const validSorts = ['sort_order', 'created_at', 'priority', 'status', 'title'];
+    const sortCol = validSorts.includes(sort) ? sort : 'sort_order';
+    const sortDir = order === 'desc' ? 'DESC' : 'ASC';
+
+    if (sortCol === 'priority') {
+      query += ` ORDER BY CASE t.priority WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 END ${sortDir}, t.sort_order ASC`;
+    } else {
+      query += ` ORDER BY t.${sortCol} ${sortDir}`;
+    }
+
+    const result = await pool.query(query, params);
+
+    // Get counts per status
+    const countsResult = await pool.query(
+      `SELECT status, COUNT(*)::int as count FROM tasks WHERE created_by = $1 GROUP BY status`,
+      [req.user.id]
+    );
+    const counts = {};
+    countsResult.rows.forEach(r => { counts[r.status] = r.count; });
+
+    res.json({ tasks: result.rows, counts });
+  } catch (err) {
+    console.error('List tasks error:', err.message);
+    res.status(500).json({ error: 'Error al cargar tareas' });
+  }
+});
+
+// Get single task with history and logs
+app.get('/api/tasks/:id', requireAuth, async (req, res) => {
+  try {
+    const taskResult = await pool.query(
+      `SELECT t.*, u.name as creator_name FROM tasks t
+       LEFT JOIN users u ON t.created_by = u.id
+       WHERE t.id = $1 AND t.created_by = $2`,
+      [req.params.id, req.user.id]
+    );
+
+    if (taskResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Tarea no encontrada' });
+    }
+
+    // Get status history
+    const historyResult = await pool.query(
+      `SELECT h.*, u.name as changed_by_name FROM task_status_history h
+       LEFT JOIN users u ON h.changed_by = u.id
+       WHERE h.task_id = $1 ORDER BY h.created_at DESC`,
+      [req.params.id]
+    );
+
+    // Get logs
+    const logsResult = await pool.query(
+      `SELECT * FROM task_logs WHERE task_id = $1 ORDER BY created_at DESC LIMIT 100`,
+      [req.params.id]
+    );
+
+    res.json({
+      task: taskResult.rows[0],
+      history: historyResult.rows,
+      logs: logsResult.rows
+    });
+  } catch (err) {
+    console.error('Get task error:', err.message);
+    res.status(500).json({ error: 'Error al cargar tarea' });
+  }
+});
+
+// Create task
+app.post('/api/tasks', requireAuth, async (req, res) => {
+  try {
+    const { title, description, tag, priority, complexity, estimated_hours, assigned_agent } = req.body;
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({ error: 'El título es requerido' });
+    }
+
+    // Get max sort_order
+    const maxOrder = await pool.query(
+      'SELECT COALESCE(MAX(sort_order), 0) + 1 as next_order FROM tasks WHERE created_by = $1',
+      [req.user.id]
+    );
+
+    const result = await pool.query(
+      `INSERT INTO tasks (title, description, status, tag, priority, complexity, estimated_hours, assigned_agent, created_by, sort_order)
+       VALUES ($1, $2, 'todo', $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [
+        title.trim(),
+        description || '',
+        tag || 'general',
+        priority || 'medium',
+        complexity || 3,
+        estimated_hours || 1.0,
+        assigned_agent || null,
+        req.user.id,
+        maxOrder.rows[0].next_order
+      ]
+    );
+
+    const task = result.rows[0];
+
+    // Log creation in status history
+    await pool.query(
+      `INSERT INTO task_status_history (task_id, old_status, new_status, changed_by, note)
+       VALUES ($1, NULL, 'todo', $2, 'Tarea creada')`,
+      [task.id, req.user.id]
+    );
+
+    // Add creation log
+    await pool.query(
+      `INSERT INTO task_logs (task_id, level, message) VALUES ($1, 'info', 'Tarea creada')`,
+      [task.id]
+    );
+
+    res.status(201).json({ task });
+  } catch (err) {
+    console.error('Create task error:', err.message);
+    res.status(500).json({ error: 'Error al crear tarea' });
+  }
+});
+
+// Update task
+app.put('/api/tasks/:id', requireAuth, async (req, res) => {
+  try {
+    const { title, description, status, tag, priority, complexity, estimated_hours, assigned_agent } = req.body;
+
+    // Verify ownership
+    const existing = await pool.query(
+      'SELECT * FROM tasks WHERE id = $1 AND created_by = $2',
+      [req.params.id, req.user.id]
+    );
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: 'Tarea no encontrada' });
+    }
+
+    const oldTask = existing.rows[0];
+    const validStatuses = ['todo', 'in_progress', 'completed', 'failed', 'rejected'];
+    const newStatus = status && validStatuses.includes(status) ? status : oldTask.status;
+
+    // Update timestamps based on status change
+    let startedAt = oldTask.started_at;
+    let completedAt = oldTask.completed_at;
+    let failedAt = oldTask.failed_at;
+
+    if (newStatus !== oldTask.status) {
+      if (newStatus === 'in_progress' && !startedAt) startedAt = new Date();
+      if (newStatus === 'completed') completedAt = new Date();
+      if (newStatus === 'failed') failedAt = new Date();
+    }
+
+    const result = await pool.query(
+      `UPDATE tasks SET
+        title = $1, description = $2, status = $3, tag = $4,
+        priority = $5, complexity = $6, estimated_hours = $7,
+        assigned_agent = $8, started_at = $9, completed_at = $10,
+        failed_at = $11, updated_at = NOW()
+       WHERE id = $12 AND created_by = $13 RETURNING *`,
+      [
+        title !== undefined ? title.trim() : oldTask.title,
+        description !== undefined ? description : oldTask.description,
+        newStatus,
+        tag || oldTask.tag,
+        complexity || oldTask.complexity,
+        estimated_hours || oldTask.estimated_hours,
+        assigned_agent !== undefined ? assigned_agent : oldTask.assigned_agent,
+        startedAt,
+        completedAt,
+        failedAt,
+        req.params.id,
+        req.user.id
+      ]
+    );
+
+    // Log status change
+    if (newStatus !== oldTask.status) {
+      await pool.query(
+        `INSERT INTO task_status_history (task_id, old_status, new_status, changed_by)
+         VALUES ($1, $2, $3, $4)`,
+        [req.params.id, oldTask.status, newStatus, req.user.id]
+      );
+      const statusLabels = { todo: 'Por hacer', in_progress: 'En progreso', completed: 'Completada', failed: 'Fallida', rejected: 'Rechazada' };
+      await pool.query(
+        `INSERT INTO task_logs (task_id, level, message) VALUES ($1, 'info', $2)`,
+        [req.params.id, `Estado cambiado: ${statusLabels[oldTask.status] || oldTask.status} → ${statusLabels[newStatus] || newStatus}`]
+      );
+    }
+
+    res.json({ task: result.rows[0] });
+  } catch (err) {
+    console.error('Update task error:', err.message);
+    res.status(500).json({ error: 'Error al actualizar tarea' });
+  }
+});
+
+// Delete task
+app.delete('/api/tasks/:id', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'DELETE FROM tasks WHERE id = $1 AND created_by = $2 RETURNING id',
+      [req.params.id, req.user.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Tarea no encontrada' });
+    }
+    res.json({ ok: true, deleted: result.rows[0].id });
+  } catch (err) {
+    console.error('Delete task error:', err.message);
+    res.status(500).json({ error: 'Error al eliminar tarea' });
+  }
+});
+
+// Reorder tasks
+app.post('/api/tasks/reorder', requireAuth, async (req, res) => {
+  try {
+    const { task_ids } = req.body;
+    if (!Array.isArray(task_ids) || task_ids.length === 0) {
+      return res.status(400).json({ error: 'Se requiere lista de IDs' });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      for (let i = 0; i < task_ids.length; i++) {
+        await client.query(
+          'UPDATE tasks SET sort_order = $1, updated_at = NOW() WHERE id = $2 AND created_by = $3',
+          [i + 1, task_ids[i], req.user.id]
+        );
+      }
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Reorder tasks error:', err.message);
+    res.status(500).json({ error: 'Error al reordenar tareas' });
+  }
+});
+
+// Add log to task
+app.post('/api/tasks/:id/logs', requireAuth, async (req, res) => {
+  try {
+    const { level, message, metadata } = req.body;
+
+    // Verify ownership
+    const task = await pool.query('SELECT id FROM tasks WHERE id = $1 AND created_by = $2', [req.params.id, req.user.id]);
+    if (task.rows.length === 0) {
+      return res.status(404).json({ error: 'Tarea no encontrada' });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO task_logs (task_id, level, message, metadata) VALUES ($1, $2, $3, $4) RETURNING *`,
+      [req.params.id, level || 'info', message, JSON.stringify(metadata || {})]
+    );
+
+    res.status(201).json({ log: result.rows[0] });
+  } catch (err) {
+    console.error('Add log error:', err.message);
+    res.status(500).json({ error: 'Error al agregar log' });
+  }
+});
+
 // ====== DASHBOARD STATS ======
+
+async function getTaskCounts(userId) {
+  try {
+    const result = await pool.query(
+      `SELECT status, COUNT(*)::int as count FROM tasks WHERE created_by = $1 GROUP BY status`,
+      [userId]
+    );
+    const counts = { todo: 0, in_progress: 0, completed: 0, failed: 0, rejected: 0 };
+    result.rows.forEach(r => { counts[r.status] = r.count; });
+    return counts;
+  } catch (e) {
+    return { todo: 0, in_progress: 0, completed: 0, failed: 0, rejected: 0 };
+  }
+}
+
+async function getRecentTaskActivity(userId) {
+  try {
+    const result = await pool.query(
+      `SELECT h.*, t.title as task_title FROM task_status_history h
+       JOIN tasks t ON h.task_id = t.id
+       WHERE t.created_by = $1
+       ORDER BY h.created_at DESC LIMIT 10`,
+      [userId]
+    );
+    return result.rows;
+  } catch (e) {
+    return [];
+  }
+}
 
 app.get('/api/dashboard/stats', requireAuth, async (req, res) => {
   try {
@@ -692,8 +1020,8 @@ app.get('/api/dashboard/stats', requireAuth, async (req, res) => {
       llm_calls_limit: sub.llm_calls_daily,
       credits_available: parseInt(creditsResult.rows[0].available),
       agents: { active: 0, total: 0 },
-      tasks: { pending: 0, in_progress: 0, completed: 0 },
-      recent_activity: []
+      tasks: await getTaskCounts(req.user.id),
+      recent_activity: await getRecentTaskActivity(req.user.id)
     };
     res.json(stats);
   } catch (err) {
@@ -735,6 +1063,11 @@ app.get('/dashboard', requireAuth, (req, res) => {
 // Pricing page
 app.get('/precios', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'pricing.html'));
+});
+
+// Tasks page (protected)
+app.get('/tareas', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'tasks.html'));
 });
 
 // Billing page (protected)
