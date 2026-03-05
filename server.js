@@ -11,12 +11,13 @@ const crypto = require('crypto');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const logger = require('./lib/logger');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 if (!process.env.DATABASE_URL) {
-  console.error('ERROR: DATABASE_URL environment variable is required');
+  logger.fatal('DATABASE_URL environment variable is required');
   process.exit(1);
 }
 
@@ -132,12 +133,12 @@ const PLAN_DETAILS = {
   enterprise: { name: 'Enterprise', price: 199, api_daily: 100000, llm_daily: 10000, companies: -1, credits: 500 }
 };
 
-// Request logging middleware
+// Request logging middleware (structured JSON)
 app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
     const duration = Date.now() - start;
-    console.log(`${req.method} ${req.path} ${res.statusCode} ${duration}ms`);
+    logger.http(req, res, duration);
   });
   next();
 });
@@ -2604,8 +2605,12 @@ app.get('/claves-api', requireAuth, (req, res) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
-  console.error('Error:', err.message);
-  console.error('Stack:', err.stack);
+  logger.error('Unhandled error in request', {
+    error: err,
+    method: req.method,
+    path: req.path,
+    user_id: req.user?.id || null
+  });
 
   // Don't leak error details in production
   const errorMessage = process.env.NODE_ENV === 'production'
@@ -2634,24 +2639,30 @@ app.use((req, res) => {
 
 // Process error handlers
 process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err);
+  logger.fatal('Uncaught exception', { error: err });
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  logger.fatal('Unhandled promise rejection', {
+    reason: reason instanceof Error ? { message: reason.message, stack: reason.stack } : reason,
+    promise: promise.toString()
+  });
   process.exit(1);
 });
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
-  console.log('SIGTERM received, shutting down gracefully');
+  logger.info('SIGTERM received, shutting down gracefully');
   await pool.end();
   process.exit(0);
 });
 
 app.listen(port, () => {
-  console.log(`Polsia ES running on port ${port}`);
-  console.log(`Environment: ${process.env.NODE_ENV}`);
-  console.log(`Health check: http://localhost:${port}/health`);
+  logger.info('Polsia ES started', {
+    port,
+    environment: process.env.NODE_ENV || 'development',
+    node_version: process.version,
+    health_endpoint: `http://localhost:${port}/health`
+  });
 });
