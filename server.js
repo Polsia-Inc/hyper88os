@@ -8,6 +8,9 @@ const bcrypt = require('bcryptjs');
 const { validatePassword } = require('./lib/password-policy');
 const { t, getTranslations } = require('./lib/i18n');
 const crypto = require('crypto');
+const helmet = require('helmet');
+const compression = require('compression');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -21,6 +24,96 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL?.includes('localhost') ? false : { rejectUnauthorized: false }
 });
+
+// ====== SECURITY MIDDLEWARE ======
+
+// Helmet: Security headers (CSP, X-Frame-Options, HSTS, etc.)
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"], // Vite requires unsafe-inline for dev
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      connectSrc: ["'self'", "https://api.stripe.com"],
+      fontSrc: ["'self'", "data:"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: []
+    }
+  },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  }
+}));
+
+// Compression: gzip for all responses
+app.use(compression());
+
+// General rate limiting (per IP)
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // 1000 requests per 15 min per IP
+  message: { error: 'Demasiadas solicitudes, intenta de nuevo más tarde' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(generalLimiter);
+
+// Strict rate limiting for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20, // 20 auth attempts per 15 min
+  message: { error: 'Demasiados intentos de autenticación, intenta de nuevo en 15 minutos' },
+  skipSuccessfulRequests: true,
+});
+
+// CSRF protection for state-changing operations
+const csrfTokens = new Map(); // In-memory store (use Redis in production)
+function generateCsrfToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+function csrfProtection(req, res, next) {
+  // Skip CSRF for API key auth (stateless)
+  if (req.apiKeyUser) return next();
+
+  // Skip for safe methods
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+
+  const token = req.headers['x-csrf-token'] || req.body?._csrf;
+  const sessionId = req.session?.id;
+
+  if (!sessionId || !token || csrfTokens.get(sessionId) !== token) {
+    return res.status(403).json({ error: 'Token CSRF inválido o faltante' });
+  }
+
+  next();
+}
+
+// Inject CSRF token into session
+app.use((req, res, next) => {
+  if (req.session?.id && !csrfTokens.has(req.session.id)) {
+    const token = generateCsrfToken();
+    csrfTokens.set(req.session.id, token);
+    req.csrfToken = token;
+  } else if (req.session?.id) {
+    req.csrfToken = csrfTokens.get(req.session.id);
+  }
+  next();
+});
+
+// Cleanup old CSRF tokens (every hour)
+setInterval(() => {
+  const now = Date.now();
+  for (const [sessionId, token] of csrfTokens.entries()) {
+    // Remove tokens older than 1 hour (approximate, session-based cleanup is better)
+    if (csrfTokens.size > 10000) { // Prevent memory leak
+      csrfTokens.delete(sessionId);
+    }
+  }
+}, 60 * 60 * 1000);
 
 // Stripe payment links (pre-created, reusable)
 const PAYMENT_LINKS = {
@@ -259,7 +352,7 @@ function generateReferralCode() {
   return 'POL' + crypto.randomBytes(4).toString('hex').toUpperCase();
 }
 
-app.post('/api/auth/signup', async (req, res) => {
+app.post('/api/auth/signup', authLimiter, async (req, res) => {
   try {
     const { email, password, name, referral_code } = req.body;
 
@@ -334,7 +427,7 @@ app.post('/api/auth/signup', async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', authLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -2512,18 +2605,28 @@ app.use((err, req, res, next) => {
   console.error('Stack:', err.stack);
 
   // Don't leak error details in production
-  const errorResponse = {
-    error: process.env.NODE_ENV === 'production'
-      ? 'Error interno del servidor'
-      : err.message
-  };
+  const errorMessage = process.env.NODE_ENV === 'production'
+    ? 'Error interno del servidor'
+    : err.message;
 
-  res.status(500).json(errorResponse);
+  // Return JSON for API requests, HTML for browser requests
+  if (req.path.startsWith('/api/') || req.headers.accept?.includes('application/json')) {
+    return res.status(500).json({ error: errorMessage });
+  }
+
+  // Serve HTML error page for browsers
+  res.status(500).sendFile(path.join(__dirname, 'public', '500.html'));
 });
 
 // Handle 404s
 app.use((req, res) => {
-  res.status(404).json({ error: 'Ruta no encontrada' });
+  // Return JSON for API requests, HTML for browser requests
+  if (req.path.startsWith('/api/') || req.headers.accept?.includes('application/json')) {
+    return res.status(404).json({ error: 'Ruta no encontrada' });
+  }
+
+  // Serve HTML error page for browsers
+  res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
 });
 
 // Process error handlers

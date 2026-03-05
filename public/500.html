@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>500 - Error del Servidor | Polsia ES</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+      text-align: center;
+    }
+    .error-container {
+      max-width: 600px;
+    }
+    .error-code {
+      font-size: 120px;
+      font-weight: 900;
+      line-height: 1;
+      margin-bottom: 20px;
+      text-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+    h1 {
+      font-size: 32px;
+      margin-bottom: 15px;
+      font-weight: 700;
+    }
+    p {
+      font-size: 18px;
+      margin-bottom: 30px;
+      opacity: 0.9;
+      line-height: 1.6;
+    }
+    .btn {
+      display: inline-block;
+      padding: 14px 32px;
+      background: white;
+      color: #f5576c;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    }
+    .error-id {
+      margin-top: 30px;
+      font-size: 14px;
+      opacity: 0.7;
+      font-family: 'Courier New', monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="error-container">
+    <div class="error-code">500</div>
+    <h1>Error Interno del Servidor</h1>
+    <p>Algo salió mal de nuestro lado. Nuestro equipo ha sido notificado y está trabajando para resolver el problema.</p>
+    <a href="/" class="btn">Volver al Inicio</a>
+    <div class="error-id">
+      Error ID: <span id="error-id"></span>
+    </div>
+  </div>
+  <script>
+    document.getElementById('error-id').textContent = Date.now().toString(36).toUpperCase();
+  </script>
+</body>
+</html>

@@ -14,14 +14,23 @@
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "compression": "^1.8.1",
     "connect-pg-simple": "^10.0.0",
     "cookie-parser": "^1.4.7",
     "express": "^4.18.2",
+    "express-rate-limit": "^8.2.1",
     "express-session": "^1.19.0",
+    "helmet": "^8.1.0",
     "openai": "^4.77.0",
     "pg": "^8.11.3"
   },
-  "keywords": ["polsia", "ai", "agents", "autonomous", "saas"],
+  "keywords": [
+    "polsia",
+    "ai",
+    "agents",
+    "autonomous",
+    "saas"
+  ],
   "author": "Polsia",
   "license": "UNLICENSED",
   "private": true
