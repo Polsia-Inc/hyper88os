@@ -1576,3 +1576,39 @@
 2026-03-05T07:55:23.929Z [DEBUG] [API:auth] OAuth token check starting
 2026-03-05T07:55:23.930Z [DEBUG] [API:auth] OAuth token check complete
 2026-03-05T07:55:26.454Z [DEBUG] Stream started - received first chunk
+2026-03-05T07:55:30.006Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-03-05T07:55:30.006Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-03-05T07:55:30.006Z [DEBUG] Found 1 hook matchers in settings
+2026-03-05T07:55:30.006Z [DEBUG] Matched 4 unique hooks for query "Bash" (4 before deduplication)
+2026-03-05T07:55:30.007Z [DEBUG] Hook result has permissionBehavior=allow
+2026-03-05T07:55:30.007Z [DEBUG] Hook result has permissionBehavior=allow
+2026-03-05T07:55:30.007Z [DEBUG] Hook result has permissionBehavior=allow
+2026-03-05T07:55:30.008Z [DEBUG] Hook result has permissionBehavior=allow
+2026-03-05T07:55:30.008Z [DEBUG] Hook approved tool use for Bash, bypassing permission check
+2026-03-05T07:55:30.034Z [DEBUG] Tool search disabled for model 'global.anthropic.claude-haiku-4-5-20251001-v1:0': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-03-05T07:55:30.035Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.33.136; cc_entrypoint=sdk-ts;
+2026-03-05T07:55:30.035Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-03-05T07:55:30.035Z [DEBUG] [API:auth] OAuth token check starting
+2026-03-05T07:55:30.035Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2026-03-05T07:55:30.035Z [DEBUG] Found 5 hook matchers in settings
+2026-03-05T07:55:30.035Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-03-05T07:55:30.035Z [DEBUG] [API:auth] OAuth token check complete
+2026-03-05T07:55:30.038Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-03-05T07:55:30.038Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-03-05T07:55:30.038Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-03-05T07:55:30.038Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-03-05T07:55:30.038Z [DEBUG] autocompact: tokens=84413 threshold=167000 effectiveWindow=180000
+2026-03-05T07:55:30.038Z [DEBUG] Auto tool search enabled: 20796 tokens (threshold: 20000, 10% of context) [source: query]
+2026-03-05T07:55:30.038Z [DEBUG] Dynamic tool loading: found 14 discovered tools in message history
+2026-03-05T07:55:30.041Z [DEBUG] Dynamic tool loading: 14/75 deferred tools included
+2026-03-05T07:55:30.042Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.33.dc6; cc_entrypoint=sdk-ts;
+2026-03-05T07:55:30.044Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-03-05T07:55:30.044Z [DEBUG] [API:auth] OAuth token check starting
+2026-03-05T07:55:30.044Z [DEBUG] [API:auth] OAuth token check complete
+2026-03-05T07:55:30.122Z [ERROR] API error (attempt 7/11): 429 429 Too many tokens per day, please wait before trying again.
+2026-03-05T07:55:30.282Z [ERROR] API error (attempt 1/11): 429 429 Too many tokens per day, please wait before trying again.
+2026-03-05T07:55:30.907Z [ERROR] API error (attempt 2/11): 429 429 Too many tokens per day, please wait before trying again.
+2026-03-05T07:55:32.045Z [ERROR] API error (attempt 3/11): 429 429 Too many tokens per day, please wait before trying again.
+2026-03-05T07:55:32.485Z [ERROR] API error (attempt 11/11): 429 429 Too many tokens per day, please wait before trying again.
+2026-03-05T07:55:32.485Z [ERROR] Error in API request: 429 Too many tokens per day, please wait before trying again.
+2026-03-05T07:55:32.749Z [DEBUG] Stream started - received first chunk
