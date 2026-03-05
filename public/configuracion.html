@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configuración - Polsia ES</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/theme.js"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+    .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; }
+  </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+  <div id="app" class="max-w-7xl mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-3xl font-bold">Configuración</h1>
+        <p class="text-gray-400 mt-1">Administra tu perfil y preferencias</p>
+      </div>
+      <a href="/dashboard.html" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition">
+        ← Volver al Panel
+      </a>
+    </div>
+
+    <!-- Tabs -->
+    <div class="border-b border-gray-700 mb-8">
+      <nav class="flex space-x-8">
+        <button onclick="switchTab('profile')" id="tab-profile" class="pb-4 px-1 font-medium tab-active">
+          Perfil
+        </button>
+        <button onclick="switchTab('company')" id="tab-company" class="pb-4 px-1 font-medium text-gray-400 hover:text-gray-300">
+          Empresa
+        </button>
+        <button onclick="switchTab('api')" id="tab-api" class="pb-4 px-1 font-medium text-gray-400 hover:text-gray-300">
+          Claves API
+        </button>
+        <button onclick="switchTab('subscription')" id="tab-subscription" class="pb-4 px-1 font-medium text-gray-400 hover:text-gray-300">
+          Suscripción
+        </button>
+        <button onclick="switchTab('withdrawal')" id="tab-withdrawal" class="pb-4 px-1 font-medium text-gray-400 hover:text-gray-300">
+          Retiro de Fondos
+        </button>
+        <button onclick="switchTab('links')" id="tab-links" class="pb-4 px-1 font-medium text-gray-400 hover:text-gray-300">
+          Enlaces Rápidos
+        </button>
+      </nav>
+    </div>
+
+    <!-- Profile Tab -->
+    <div id="content-profile" class="space-y-6">
+      <div class="bg-gray-800 rounded-lg p-6">
+        <h2 class="text-xl font-bold mb-4">Perfil Personal</h2>
+        <form id="profile-form" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-2">Nombre</label>
+            <input type="text" id="profile-name" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Correo Electrónico</label>
+            <input type="email" id="profile-email" disabled class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg opacity-50 cursor-not-allowed">
+            <p class="text-xs text-gray-400 mt-1">El correo no se puede cambiar</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">URL de Avatar</label>
+            <input type="url" id="profile-avatar" placeholder="https://..." class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition">
+            Guardar Cambios
+          </button>
+        </form>
+      </div>
+
+      <div class="bg-gray-800 rounded-lg p-6">
+        <h2 class="text-xl font-bold mb-4">Cambiar Contraseña</h2>
+        <form id="password-form" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-2">Contraseña Actual</label>
+            <input type="password" id="current-password" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Nueva Contraseña</label>
+            <input type="password" id="new-password" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Confirmar Nueva Contraseña</label>
+            <input type="password" id="confirm-password" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition">
+            Actualizar Contraseña
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Company Tab -->
+    <div id="content-company" class="hidden space-y-6">
+      <div class="bg-gray-800 rounded-lg p-6">
+        <h2 class="text-xl font-bold mb-4">Configuración de Empresa</h2>
+        <form id="company-form" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-2">Nombre de Empresa</label>
+            <input type="text" id="company-name" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Descripción</label>
+            <textarea id="company-description" rows="3" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Zona Horaria</label>
+            <select id="company-timezone" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <option value="America/New_York">América/Nueva York (EST)</option>
+              <option value="America/Chicago">América/Chicago (CST)</option>
+              <option value="America/Denver">América/Denver (MST)</option>
+              <option value="America/Los_Angeles">América/Los Ángeles (PST)</option>
+              <option value="America/Mexico_City">América/Ciudad de México</option>
+              <option value="America/Buenos_Aires">América/Buenos Aires</option>
+              <option value="Europe/London">Europa/Londres</option>
+              <option value="Europe/Paris">Europa/París</option>
+              <option value="Asia/Tokyo">Asia/Tokio</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Logo de Empresa (URL)</label>
+            <input type="url" id="company-logo" placeholder="https://..." class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <p class="text-xs text-gray-400 mt-1">Sube tu logo a un servicio de hosting de imágenes</p>
+          </div>
+          <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition">
+            Guardar Cambios
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- API Keys Tab -->
+    <div id="content-api" class="hidden space-y-6">
+      <div class="bg-gray-800 rounded-lg p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-bold">Claves API</h2>
+          <button onclick="showCreateKeyModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition">
+            + Crear Nueva Clave
+          </button>
+        </div>
+        <div class="space-y-4" id="api-keys-list">
+          <!-- API keys populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Subscription Tab -->
+    <div id="content-subscription" class="hidden space-y-6">
+      <div class="bg-gray-800 rounded-lg p-6">
+        <h2 class="text-xl font-bold mb-4">Suscripción Actual</h2>
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <p class="text-2xl font-bold" id="current-plan">Plan Gratis</p>
+            <p class="text-gray-400 mt-1">Gestiona tu plan y uso</p>
+          </div>
+          <a href="/pricing.html" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition">
+            Mejorar Plan
+          </a>
+        </div>
+        <div class="border-t border-gray-700 pt-6">
+          <h3 class="font-medium mb-4">Uso Actual</h3>
+          <div class="space-y-3">
+            <div>
+              <div class="flex justify-between text-sm mb-1">
+                <span>Llamadas API</span>
+                <span><span id="api-calls-used">0</span> / <span id="api-calls-limit">100</span></span>
+              </div>
+              <div class="w-full bg-gray-700 rounded-full h-2">
+                <div id="api-calls-bar" class="bg-blue-600 h-2 rounded-full" style="width: 0%"></div>
+              </div>
+            </div>
+            <div>
+              <div class="flex justify-between text-sm mb-1">
+                <span>Llamadas LLM</span>
+                <span><span id="llm-calls-used">0</span> / <span id="llm-calls-limit">10</span></span>
+              </div>
+              <div class="w-full bg-gray-700 rounded-full h-2">
+                <div id="llm-calls-bar" class="bg-purple-600 h-2 rounded-full" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Withdrawal Tab -->
+    <div id="content-withdrawal" class="hidden space-y-6">
+      <div class="bg-gray-800 rounded-lg p-6">
+        <h2 class="text-xl font-bold mb-4">Retirar Fondos</h2>
+        <div class="mb-6">
+          <p class="text-gray-400 mb-2">Saldo Disponible</p>
+          <p class="text-4xl font-bold text-green-400" id="withdrawal-balance">$0.00</p>
+        </div>
+        <form id="withdrawal-form" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-2">Cantidad a Retirar (USD)</label>
+            <input type="number" id="withdrawal-amount" min="50" step="0.01" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <p class="text-xs text-gray-400 mt-1">Mínimo $50 USD</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Método de Pago</label>
+            <select id="withdrawal-method" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <option value="paypal">PayPal</option>
+              <option value="bank">Transferencia Bancaria</option>
+              <option value="stripe">Stripe Connect</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Detalles de Pago</label>
+            <textarea id="withdrawal-details" rows="3" placeholder="Ingresa tu email de PayPal, número de cuenta bancaria, etc." class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
+          </div>
+          <button type="submit" class="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-medium transition">
+            Solicitar Retiro
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Quick Links Tab -->
+    <div id="content-links" class="hidden space-y-6">
+      <div class="bg-gray-800 rounded-lg p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-bold">Enlaces Rápidos</h2>
+          <button onclick="showAddLinkModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition">
+            + Agregar Enlace
+          </button>
+        </div>
+        <div class="space-y-3" id="quick-links-list">
+          <!-- Quick links populated by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create API Key Modal -->
+  <div id="create-key-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+      <h3 class="text-xl font-bold mb-4">Crear Nueva Clave API</h3>
+      <form id="create-key-form" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium mb-2">Nombre de la Clave</label>
+          <input type="text" id="new-key-name" placeholder="Mi Aplicación" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+        <div class="flex space-x-3">
+          <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition">
+            Crear
+          </button>
+          <button type="button" onclick="hideCreateKeyModal()" class="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition">
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Link Modal -->
+  <div id="add-link-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+      <h3 class="text-xl font-bold mb-4">Agregar Enlace Rápido</h3>
+      <form id="add-link-form" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium mb-2">Título</label>
+          <input type="text" id="new-link-title" placeholder="Dashboard Analytics" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-2">URL</label>
+          <input type="url" id="new-link-url" placeholder="https://..." class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+        <div class="flex space-x-3">
+          <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition">
+            Agregar
+          </button>
+          <button type="button" onclick="hideAddLinkModal()" class="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition">
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/configuracion.js"></script>
+</body>
+</html>

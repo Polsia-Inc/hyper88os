@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Polsia ES</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/theme.js"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+  <div id="app" class="max-w-7xl mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-3xl font-bold">Panel de Administración</h1>
+        <p class="text-gray-400 mt-1">Vista general del sistema</p>
+      </div>
+      <a href="/dashboard.html" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition">
+        ← Volver al Panel
+      </a>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading" class="text-center py-12">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+      <p class="text-gray-400 mt-4">Cargando datos...</p>
+    </div>
+
+    <!-- Access Denied -->
+    <div id="access-denied" class="hidden">
+      <div class="bg-red-900/20 border border-red-500 rounded-lg p-8 text-center">
+        <h2 class="text-2xl font-bold text-red-400 mb-2">Acceso Denegado</h2>
+        <p class="text-gray-300">Solo los administradores pueden acceder a esta página.</p>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="content" class="hidden space-y-8">
+      <!-- Overview Stats -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="bg-gray-800 rounded-lg p-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-400 text-sm">Total Usuarios</p>
+              <p class="text-3xl font-bold mt-1" id="total-users">0</p>
+            </div>
+            <div class="text-blue-500">
+              <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+              </svg>
+            </div>
+          </div>
+          <p class="text-sm text-green-400 mt-2"><span id="active-users">0</span> activos</p>
+        </div>
+
+        <div class="bg-gray-800 rounded-lg p-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-400 text-sm">Total Empresas</p>
+              <p class="text-3xl font-bold mt-1" id="total-companies">0</p>
+            </div>
+            <div class="text-purple-500">
+              <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-gray-800 rounded-lg p-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-400 text-sm">Tareas Ejecutadas</p>
+              <p class="text-3xl font-bold mt-1" id="total-tasks">0</p>
+            </div>
+            <div class="text-green-500">
+              <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+              </svg>
+            </div>
+          </div>
+          <p class="text-sm text-gray-400 mt-2"><span id="completed-tasks">0</span> completadas</p>
+        </div>
+
+        <div class="bg-gray-800 rounded-lg p-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-400 text-sm">Ingresos Totales</p>
+              <p class="text-3xl font-bold mt-1" id="total-revenue">$0</p>
+            </div>
+            <div class="text-yellow-500">
+              <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+          </div>
+          <p class="text-sm text-yellow-400 mt-2">Comisión: <span id="commission">$0</span></p>
+        </div>
+      </div>
+
+      <!-- System Health -->
+      <div class="bg-gray-800 rounded-lg p-6">
+        <h2 class="text-xl font-bold mb-4">Estado del Sistema</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="flex items-center justify-between p-4 bg-gray-700 rounded-lg">
+            <span>Base de Datos</span>
+            <span class="flex items-center">
+              <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+              <span id="db-status">Saludable</span>
+            </span>
+          </div>
+          <div class="flex items-center justify-between p-4 bg-gray-700 rounded-lg">
+            <span>Servicios API</span>
+            <span class="flex items-center">
+              <span class="w-2 h-2 bg-green-500 rounded-full mr-2" id="api-status-dot"></span>
+              <span id="api-status">Saludable</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Users Table -->
+      <div class="bg-gray-800 rounded-lg p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-bold">Usuarios Recientes</h2>
+          <input type="text" id="user-search" placeholder="Buscar usuarios..."
+            class="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead class="text-left border-b border-gray-700">
+              <tr>
+                <th class="pb-3 text-gray-400 font-medium">ID</th>
+                <th class="pb-3 text-gray-400 font-medium">Nombre</th>
+                <th class="pb-3 text-gray-400 font-medium">Email</th>
+                <th class="pb-3 text-gray-400 font-medium">Plan</th>
+                <th class="pb-3 text-gray-400 font-medium">Saldo</th>
+                <th class="pb-3 text-gray-400 font-medium">Creado</th>
+                <th class="pb-3 text-gray-400 font-medium">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="users-table" class="divide-y divide-gray-700">
+              <!-- Users populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Companies Table -->
+      <div class="bg-gray-800 rounded-lg p-6">
+        <h2 class="text-xl font-bold mb-4">Empresas Activas</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead class="text-left border-b border-gray-700">
+              <tr>
+                <th class="pb-3 text-gray-400 font-medium">ID</th>
+                <th class="pb-3 text-gray-400 font-medium">Nombre</th>
+                <th class="pb-3 text-gray-400 font-medium">Propietario</th>
+                <th class="pb-3 text-gray-400 font-medium">Plan</th>
+                <th class="pb-3 text-gray-400 font-medium">Tareas</th>
+                <th class="pb-3 text-gray-400 font-medium">Creado</th>
+              </tr>
+            </thead>
+            <tbody id="companies-table" class="divide-y divide-gray-700">
+              <!-- Companies populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/login.html';
+    }
+
+    async function loadAdminData() {
+      try {
+        // Check if user is admin
+        const meRes = await fetch('/api/auth/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const meData = await meRes.json();
+
+        if (!meData.user.is_admin) {
+          document.getElementById('loading').classList.add('hidden');
+          document.getElementById('access-denied').classList.remove('hidden');
+          return;
+        }
+
+        // Load admin stats
+        const [statsRes, usersRes, companiesRes] = await Promise.all([
+          fetch('/api/admin/stats', { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch('/api/admin/users?limit=20', { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch('/api/admin/companies?limit=20', { headers: { 'Authorization': `Bearer ${token}` } })
+        ]);
+
+        const stats = await statsRes.json();
+        const users = await usersRes.json();
+        const companies = await companiesRes.json();
+
+        // Populate stats
+        document.getElementById('total-users').textContent = stats.users.total;
+        document.getElementById('active-users').textContent = stats.users.active;
+        document.getElementById('total-companies').textContent = stats.companies.total;
+        document.getElementById('total-tasks').textContent = stats.tasks.total;
+        document.getElementById('completed-tasks').textContent = stats.tasks.completed;
+        document.getElementById('total-revenue').textContent = `$${(stats.revenue.total / 100).toFixed(2)}`;
+        document.getElementById('commission').textContent = `$${(stats.revenue.commission / 100).toFixed(2)}`;
+
+        // Populate users table
+        const usersTable = document.getElementById('users-table');
+        usersTable.innerHTML = users.users.map(user => `
+          <tr>
+            <td class="py-3">${user.id}</td>
+            <td class="py-3">${user.name}</td>
+            <td class="py-3">${user.email}</td>
+            <td class="py-3"><span class="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-sm">${user.plan || 'free'}</span></td>
+            <td class="py-3">$${((user.balance_cents || 0) / 100).toFixed(2)}</td>
+            <td class="py-3">${new Date(user.created_at).toLocaleDateString('es')}</td>
+            <td class="py-3">
+              <button onclick="viewUser(${user.id})" class="text-blue-400 hover:text-blue-300">Ver</button>
+            </td>
+          </tr>
+        `).join('');
+
+        // Populate companies table
+        const companiesTable = document.getElementById('companies-table');
+        companiesTable.innerHTML = companies.companies.map(company => `
+          <tr>
+            <td class="py-3">${company.id}</td>
+            <td class="py-3">${company.name}</td>
+            <td class="py-3">${company.owner_email || 'N/A'}</td>
+            <td class="py-3"><span class="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-sm">${company.plan || 'free'}</span></td>
+            <td class="py-3">${company.task_count || 0}</td>
+            <td class="py-3">${new Date(company.created_at).toLocaleDateString('es')}</td>
+          </tr>
+        `).join('');
+
+        // Show content
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('content').classList.remove('hidden');
+
+      } catch (error) {
+        console.error('Failed to load admin data:', error);
+        alert('Error al cargar datos de administración');
+      }
+    }
+
+    function viewUser(userId) {
+      // Navigate to user detail page (can be implemented later)
+      alert(`Ver detalles del usuario ${userId}`);
+    }
+
+    // Search users
+    document.addEventListener('DOMContentLoaded', () => {
+      const searchInput = document.getElementById('user-search');
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          const query = e.target.value.toLowerCase();
+          const rows = document.querySelectorAll('#users-table tr');
+          rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(query) ? '' : 'none';
+          });
+        });
+      }
+    });
+
+    loadAdminData();
+  </script>
+</body>
+</html>

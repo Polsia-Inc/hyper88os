@@ -2527,6 +2527,248 @@ app.get('/api/dashboard/stats', requireAuth, async (req, res) => {
   }
 });
 
+// ====== ADMIN MIDDLEWARE ======
+
+function requireAdmin(req, res, next) {
+  if (!req.user?.is_admin) {
+    return apiError(res, 403, 'Acceso denegado - Solo administradores');
+  }
+  next();
+}
+
+// ====== ADMIN ENDPOINTS ======
+
+// Admin stats
+app.get('/api/admin/stats', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const [usersRes, companiesRes, tasksRes, revenueRes] = await Promise.all([
+      pool.query('SELECT COUNT(*)::int as total, COUNT(CASE WHEN created_at > NOW() - INTERVAL \'30 days\' THEN 1 END)::int as active FROM users'),
+      pool.query('SELECT COUNT(*)::int as total FROM companies'),
+      pool.query('SELECT COUNT(*)::int as total, COUNT(CASE WHEN status = \'completed\' THEN 1 END)::int as completed FROM tasks'),
+      pool.query('SELECT COALESCE(SUM(balance_cents), 0)::int as total FROM users')
+    ]);
+
+    const stats = {
+      users: {
+        total: usersRes.rows[0].total,
+        active: usersRes.rows[0].active
+      },
+      companies: {
+        total: companiesRes.rows[0].total
+      },
+      tasks: {
+        total: tasksRes.rows[0].total,
+        completed: tasksRes.rows[0].completed
+      },
+      revenue: {
+        total: revenueRes.rows[0].total,
+        commission: Math.round(revenueRes.rows[0].total * 0.2) // 20% commission
+      }
+    };
+
+    apiSuccess(res, stats);
+  } catch (err) {
+    logger.error('Admin stats error:', err);
+    apiError(res, 500, 'Error al cargar estadísticas de administrador');
+  }
+});
+
+// List users (admin only)
+app.get('/api/admin/users', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { limit = 20, offset = 0 } = req.query;
+    const result = await pool.query(
+      `SELECT u.id, u.name, u.email, u.balance_cents, u.created_at,
+              s.plan_slug as plan
+       FROM users u
+       LEFT JOIN subscriptions s ON u.id = s.user_id AND s.status = 'active'
+       ORDER BY u.created_at DESC
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
+
+    apiSuccess(res, { users: result.rows });
+  } catch (err) {
+    logger.error('Admin users error:', err);
+    apiError(res, 500, 'Error al cargar usuarios');
+  }
+});
+
+// List companies (admin only)
+app.get('/api/admin/companies', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { limit = 20, offset = 0 } = req.query;
+    const result = await pool.query(
+      `SELECT c.id, c.name, c.plan, c.created_at,
+              u.email as owner_email,
+              (SELECT COUNT(*) FROM tasks WHERE company_id = c.id) as task_count
+       FROM companies c
+       LEFT JOIN users u ON c.owner_id = u.id
+       ORDER BY c.created_at DESC
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
+
+    apiSuccess(res, { companies: result.rows });
+  } catch (err) {
+    logger.error('Admin companies error:', err);
+    apiError(res, 500, 'Error al cargar empresas');
+  }
+});
+
+// ====== SETTINGS ENDPOINTS ======
+
+// Update profile
+app.post('/api/settings/profile', requireAuth, async (req, res) => {
+  try {
+    const { name, avatar_url } = req.body;
+
+    await pool.query(
+      'UPDATE users SET name = $1, avatar_url = $2, updated_at = NOW() WHERE id = $3',
+      [name, avatar_url, req.user.id]
+    );
+
+    apiSuccess(res, { message: 'Perfil actualizado' });
+  } catch (err) {
+    logger.error('Profile update error:', err);
+    apiError(res, 500, 'Error al actualizar perfil');
+  }
+});
+
+// Change password
+app.post('/api/settings/password', requireAuth, async (req, res) => {
+  try {
+    const { current_password, new_password } = req.body;
+
+    // Verify current password
+    const result = await pool.query('SELECT password_hash FROM users WHERE id = $1', [req.user.id]);
+    const user = result.rows[0];
+
+    const validPassword = await bcrypt.compare(current_password, user.password_hash);
+    if (!validPassword) {
+      return apiError(res, 400, 'Contraseña actual incorrecta');
+    }
+
+    // Validate new password
+    const validation = validatePassword(new_password);
+    if (!validation.valid) {
+      return apiError(res, 400, validation.errors.join(', '));
+    }
+
+    // Hash and update
+    const newHash = await bcrypt.hash(new_password, 10);
+    await pool.query(
+      'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+      [newHash, req.user.id]
+    );
+
+    apiSuccess(res, { message: 'Contraseña actualizada' });
+  } catch (err) {
+    logger.error('Password update error:', err);
+    apiError(res, 500, 'Error al actualizar contraseña');
+  }
+});
+
+// Request withdrawal
+app.post('/api/settings/withdrawal', requireAuth, async (req, res) => {
+  try {
+    const { amount_cents, payment_method, payment_details } = req.body;
+
+    if (amount_cents < 5000) { // $50 minimum
+      return apiError(res, 400, 'El monto mínimo es $50 USD');
+    }
+
+    // Check balance
+    const balanceRes = await pool.query('SELECT balance_cents FROM users WHERE id = $1', [req.user.id]);
+    const balance = balanceRes.rows[0].balance_cents || 0;
+
+    if (balance < amount_cents) {
+      return apiError(res, 400, 'Saldo insuficiente');
+    }
+
+    // Check for pending withdrawals
+    const pendingRes = await pool.query(
+      'SELECT id FROM withdrawals WHERE user_id = $1 AND status = \'pending\'',
+      [req.user.id]
+    );
+
+    if (pendingRes.rows.length > 0) {
+      return apiError(res, 400, 'Ya tienes una solicitud de retiro pendiente');
+    }
+
+    // Create withdrawal request
+    await pool.query(
+      `INSERT INTO withdrawals (user_id, amount_cents, payment_method, payment_details, status)
+       VALUES ($1, $2, $3, $4, 'pending')`,
+      [req.user.id, amount_cents, payment_method, JSON.stringify(payment_details)]
+    );
+
+    apiSuccess(res, { message: 'Solicitud de retiro creada' }, 201);
+  } catch (err) {
+    logger.error('Withdrawal request error:', err);
+    apiError(res, 500, 'Error al solicitar retiro');
+  }
+});
+
+// Get quick links
+app.get('/api/settings/quick-links', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM quick_links WHERE user_id = $1 AND is_active = true ORDER BY sort_order',
+      [req.user.id]
+    );
+
+    apiSuccess(res, { links: result.rows });
+  } catch (err) {
+    logger.error('Quick links error:', err);
+    apiError(res, 500, 'Error al cargar enlaces rápidos');
+  }
+});
+
+// Add quick link
+app.post('/api/settings/quick-links', requireAuth, async (req, res) => {
+  try {
+    const { title, url, icon = 'link' } = req.body;
+
+    if (!title || !url) {
+      return apiError(res, 400, 'Título y URL son requeridos');
+    }
+
+    // Get max sort order
+    const maxRes = await pool.query(
+      'SELECT COALESCE(MAX(sort_order), 0) as max FROM quick_links WHERE user_id = $1',
+      [req.user.id]
+    );
+    const sortOrder = maxRes.rows[0].max + 1;
+
+    const result = await pool.query(
+      `INSERT INTO quick_links (user_id, title, url, icon, sort_order)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [req.user.id, title, url, icon, sortOrder]
+    );
+
+    apiSuccess(res, { link: result.rows[0] }, 201);
+  } catch (err) {
+    logger.error('Add quick link error:', err);
+    apiError(res, 500, 'Error al agregar enlace rápido');
+  }
+});
+
+// Delete quick link
+app.delete('/api/settings/quick-links/:id', requireAuth, async (req, res) => {
+  try {
+    await pool.query(
+      'UPDATE quick_links SET is_active = false WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]
+    );
+
+    apiSuccess(res, { message: 'Enlace eliminado' });
+  } catch (err) {
+    logger.error('Delete quick link error:', err);
+    apiError(res, 500, 'Error al eliminar enlace');
+  }
+});
+
 // ====== PAGE ROUTES ======
 
 // Landing page
@@ -2601,6 +2843,16 @@ app.get('/memoria', requireAuth, (req, res) => {
 // API keys management page (protected)
 app.get('/claves-api', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'api-keys.html'));
+});
+
+// Admin dashboard page (protected, admin only)
+app.get('/admin', requireAuth, requireAdmin, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+// Settings page (protected)
+app.get('/configuracion', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'configuracion.html'));
 });
 
 // Global error handler
