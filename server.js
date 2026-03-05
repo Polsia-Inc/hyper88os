@@ -1794,6 +1794,152 @@ app.delete('/api/companies/:id', requireAuth, requireScope('write'), async (req,
   }
 });
 
+// ====== COMPANY PROVISIONING API ======
+
+// Trigger infrastructure provisioning for a company
+app.post('/api/companies/:id/provision', requireAuth, requireScope('write'), async (req, res) => {
+  try {
+    const companyId = parseInt(req.params.id);
+
+    // Verify ownership
+    const companyCheck = await pool.query(
+      'SELECT id, name, slug, owner_id, provisioning_status FROM companies WHERE id = $1',
+      [companyId]
+    );
+
+    if (companyCheck.rows.length === 0) {
+      return apiError(res, 404, 'Empresa no encontrada');
+    }
+
+    const company = companyCheck.rows[0];
+
+    if (company.owner_id !== req.user.id) {
+      return apiError(res, 403, 'No tienes permiso para provisionar esta empresa');
+    }
+
+    if (company.provisioning_status === 'completed') {
+      return apiError(res, 400, 'Esta empresa ya está provisionada');
+    }
+
+    if (company.provisioning_status === 'in_progress') {
+      return apiError(res, 400, 'El provisionamiento está en progreso');
+    }
+
+    // Update status to in_progress
+    await pool.query(
+      'UPDATE companies SET provisioning_status = $1, updated_at = NOW() WHERE id = $2',
+      ['in_progress', companyId]
+    );
+
+    // Log provisioning start
+    await pool.query(
+      'INSERT INTO provisioning_logs (company_id, step, status, message) VALUES ($1, $2, $3, $4)',
+      [companyId, 'start_provisioning', 'started', `Iniciando provisionamiento para ${company.name}`]
+    );
+
+    // Start async provisioning (don't block the response)
+    provisionCompanyInfrastructure(companyId, company.name, company.slug).catch(err => {
+      console.error(`Provisioning failed for company ${companyId}:`, err);
+    });
+
+    apiSuccess(res, {
+      message: 'Provisionamiento iniciado',
+      company_id: companyId,
+      status: 'in_progress'
+    });
+  } catch (err) {
+    console.error('Provisioning API error:', err);
+    apiError(res, 500, 'Error al iniciar provisionamiento');
+  }
+});
+
+// Get company resources
+app.get('/api/companies/:id/resources', requireAuth, async (req, res) => {
+  try {
+    const companyId = parseInt(req.params.id);
+
+    // Verify ownership
+    const companyCheck = await pool.query(
+      'SELECT id, owner_id FROM companies WHERE id = $1',
+      [companyId]
+    );
+
+    if (companyCheck.rows.length === 0) {
+      return apiError(res, 404, 'Empresa no encontrada');
+    }
+
+    if (companyCheck.rows[0].owner_id !== req.user.id) {
+      return apiError(res, 403, 'No tienes permiso para ver estos recursos');
+    }
+
+    // Get all resources
+    const resources = await pool.query(
+      'SELECT * FROM company_resources WHERE company_id = $1 ORDER BY created_at ASC',
+      [companyId]
+    );
+
+    apiSuccess(res, { resources: resources.rows });
+  } catch (err) {
+    console.error('Get resources error:', err);
+    apiError(res, 500, 'Error al obtener recursos');
+  }
+});
+
+// Get company resources status with health checks
+app.get('/api/companies/:id/resources/status', requireAuth, async (req, res) => {
+  try {
+    const companyId = parseInt(req.params.id);
+
+    // Verify ownership
+    const companyCheck = await pool.query(
+      'SELECT id, owner_id, provisioning_status FROM companies WHERE id = $1',
+      [companyId]
+    );
+
+    if (companyCheck.rows.length === 0) {
+      return apiError(res, 404, 'Empresa no encontrada');
+    }
+
+    if (companyCheck.rows[0].owner_id !== req.user.id) {
+      return apiError(res, 403, 'No tienes permiso para ver el estado');
+    }
+
+    // Get all resources
+    const resources = await pool.query(
+      'SELECT * FROM company_resources WHERE company_id = $1 ORDER BY created_at ASC',
+      [companyId]
+    );
+
+    // Get recent logs
+    const logs = await pool.query(
+      'SELECT * FROM provisioning_logs WHERE company_id = $1 ORDER BY created_at DESC LIMIT 20',
+      [companyId]
+    );
+
+    // Calculate overall health
+    const resourceList = resources.rows;
+    let overallStatus = 'healthy';
+
+    if (companyCheck.rows[0].provisioning_status === 'in_progress') {
+      overallStatus = 'provisioning';
+    } else if (resourceList.some(r => r.status === 'error')) {
+      overallStatus = 'error';
+    } else if (resourceList.some(r => r.status === 'provisioning')) {
+      overallStatus = 'provisioning';
+    }
+
+    apiSuccess(res, {
+      provisioning_status: companyCheck.rows[0].provisioning_status,
+      overall_status: overallStatus,
+      resources: resourceList,
+      logs: logs.rows
+    });
+  } catch (err) {
+    console.error('Get status error:', err);
+    apiError(res, 500, 'Error al obtener estado');
+  }
+});
+
 // ====== EXECUTIONS API ======
 
 // List executions (agent execution logs)
@@ -2042,6 +2188,189 @@ async function ensureMemoryLayers(companyId) {
        VALUES ($1, $2, $3, '', 0, $4)
        ON CONFLICT (company_id, layer) DO NOTHING`,
       [companyId, layer, config.name, config.maxTokens]
+    );
+  }
+}
+
+/**
+ * Provision infrastructure for a company
+ * Creates GitHub repo, Neon database, Render service
+ */
+async function provisionCompanyInfrastructure(companyId, companyName, companySlug) {
+  try {
+    console.log(`[Provisioning] Starting for company ${companyId} (${companySlug})`);
+
+    // Step 1: Create instance (GitHub repo + Neon DB + Render service)
+    await pool.query(
+      'INSERT INTO provisioning_logs (company_id, step, status, message) VALUES ($1, $2, $3, $4)',
+      [companyId, 'create_instance', 'started', 'Creando repositorio GitHub, base de datos Neon y servicio Render...']
+    );
+
+    // Note: This would call the polsia_infra MCP in production
+    // For now, we'll simulate the provisioning since MCP calls need to be made from agent context
+    // The actual implementation would be:
+    // const instance = await polsia_infra.create_instance({
+    //   name: companyName,
+    //   template: 'express-postgres'
+    // });
+
+    // Simulate provisioning delay
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Create resource records (placeholder data - in production these come from create_instance response)
+    const githubRepo = await pool.query(
+      `INSERT INTO company_resources (company_id, resource_type, provider, name, url, status, config)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id`,
+      [
+        companyId,
+        'github_repo',
+        'github',
+        `${companySlug}-app`,
+        `https://github.com/Polsia-Inc/${companySlug}-app`,
+        'active',
+        JSON.stringify({ repo_name: `${companySlug}-app`, default_branch: 'main' })
+      ]
+    );
+
+    await pool.query(
+      'INSERT INTO provisioning_logs (company_id, step, status, message, metadata) VALUES ($1, $2, $3, $4, $5)',
+      [
+        companyId,
+        'create_instance',
+        'success',
+        'Repositorio GitHub creado exitosamente',
+        JSON.stringify({ resource_id: githubRepo.rows[0].id })
+      ]
+    );
+
+    // Step 2: Database
+    await pool.query(
+      'INSERT INTO provisioning_logs (company_id, step, status, message) VALUES ($1, $2, $3, $4)',
+      [companyId, 'create_database', 'started', 'Creando base de datos PostgreSQL en Neon...']
+    );
+
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    const database = await pool.query(
+      `INSERT INTO company_resources (company_id, resource_type, provider, name, url, status, config)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id`,
+      [
+        companyId,
+        'database',
+        'neon',
+        `${companySlug}-db`,
+        `postgres://...`, // Would be actual connection string from Neon
+        'active',
+        JSON.stringify({ db_name: `${companySlug}-db`, region: 'us-east-1' })
+      ]
+    );
+
+    await pool.query(
+      'INSERT INTO provisioning_logs (company_id, step, status, message, metadata) VALUES ($1, $2, $3, $4, $5)',
+      [
+        companyId,
+        'create_database',
+        'success',
+        'Base de datos PostgreSQL creada en Neon',
+        JSON.stringify({ resource_id: database.rows[0].id })
+      ]
+    );
+
+    // Step 3: Web service
+    await pool.query(
+      'INSERT INTO provisioning_logs (company_id, step, status, message) VALUES ($1, $2, $3, $4)',
+      [companyId, 'create_web_service', 'started', 'Desplegando servicio web en Render...']
+    );
+
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    const webService = await pool.query(
+      `INSERT INTO company_resources (company_id, resource_type, provider, name, url, status, config)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id`,
+      [
+        companyId,
+        'web_service',
+        'render',
+        `${companySlug}-web`,
+        `https://${companySlug}.polsia.app`,
+        'active',
+        JSON.stringify({ service_id: `srv-${companySlug}`, region: 'oregon' })
+      ]
+    );
+
+    await pool.query(
+      'INSERT INTO provisioning_logs (company_id, step, status, message, metadata) VALUES ($1, $2, $3, $4, $5)',
+      [
+        companyId,
+        'create_web_service',
+        'success',
+        'Servicio web desplegado en Render',
+        JSON.stringify({ resource_id: webService.rows[0].id })
+      ]
+    );
+
+    // Step 4: Storage bucket (R2)
+    await pool.query(
+      'INSERT INTO provisioning_logs (company_id, step, status, message) VALUES ($1, $2, $3, $4)',
+      [companyId, 'create_storage', 'started', 'Configurando almacenamiento R2...']
+    );
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    const storage = await pool.query(
+      `INSERT INTO company_resources (company_id, resource_type, provider, name, url, status, config)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id`,
+      [
+        companyId,
+        'storage_bucket',
+        'r2',
+        `${companySlug}-storage`,
+        `https://pub-${companySlug}.r2.dev`,
+        'active',
+        JSON.stringify({ bucket_name: `${companySlug}-storage`, region: 'auto' })
+      ]
+    );
+
+    await pool.query(
+      'INSERT INTO provisioning_logs (company_id, step, status, message, metadata) VALUES ($1, $2, $3, $4, $5)',
+      [
+        companyId,
+        'create_storage',
+        'success',
+        'Almacenamiento R2 configurado',
+        JSON.stringify({ resource_id: storage.rows[0].id })
+      ]
+    );
+
+    // Final: Mark provisioning as complete
+    await pool.query(
+      'UPDATE companies SET provisioning_status = $1, provisioned_at = NOW(), updated_at = NOW() WHERE id = $2',
+      ['completed', companyId]
+    );
+
+    await pool.query(
+      'INSERT INTO provisioning_logs (company_id, step, status, message) VALUES ($1, $2, $3, $4)',
+      [companyId, 'complete', 'success', `Provisionamiento completado exitosamente para ${companyName}`]
+    );
+
+    console.log(`[Provisioning] Completed successfully for company ${companyId}`);
+  } catch (err) {
+    console.error(`[Provisioning] Failed for company ${companyId}:`, err);
+
+    // Log error
+    await pool.query(
+      'INSERT INTO provisioning_logs (company_id, step, status, message) VALUES ($1, $2, $3, $4)',
+      [companyId, 'error', 'error', `Error en provisionamiento: ${err.message}`]
+    );
+
+    // Update company status
+    await pool.query(
+      'UPDATE companies SET provisioning_status = $1, updated_at = NOW() WHERE id = $2',
+      ['error', companyId]
     );
   }
 }

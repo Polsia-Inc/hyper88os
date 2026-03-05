@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Empresas — Polsia ES</title>
+    <script src="/theme.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #111118;
+            --bg-card: #16161f;
+            --border: #1e1e2a;
+            --text-primary: #e8e8ed;
+            --text-secondary: #8888a0;
+            --text-dim: #55556a;
+            --accent: #00e599;
+            --accent-dim: #00e59920;
+            --amber: #ffb800;
+            --red: #ff4466;
+            --blue: #4488ff;
+            --sidebar-width: 260px;
+        }
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background 0.3s, color 0.3s;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* Layout */
+        .app-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 10;
+        }
+        .sidebar-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+        }
+        .sidebar-logo {
+            font-weight: 700;
+            font-size: 18px;
+            letter-spacing: -0.5px;
+        }
+        .sidebar-logo span { color: var(--accent); }
+        .sidebar-nav {
+            flex: 1;
+            padding: 16px 12px;
+        }
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.2s;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+        .nav-link:hover { background: var(--bg-card); color: var(--text-primary); }
+        .nav-link.active { background: var(--accent-dim); color: var(--accent); }
+
+        /* Main content */
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            padding: 40px;
+        }
+
+        .page-header {
+            margin-bottom: 32px;
+        }
+        .page-title {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .page-subtitle {
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: #000;
+        }
+        .btn-primary:hover {
+            background: #00ff99;
+            transform: translateY(-1px);
+        }
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover {
+            background: var(--bg-card);
+        }
+
+        /* Company list */
+        .company-list {
+            display: grid;
+            gap: 20px;
+        }
+        .company-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .company-info h3 {
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+        .company-info .slug {
+            color: var(--text-dim);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+        .company-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+        .status-not-started {
+            background: var(--bg-secondary);
+            color: var(--text-dim);
+        }
+        .status-not-started .status-dot { background: var(--text-dim); }
+        .status-in-progress {
+            background: rgba(255, 184, 0, 0.15);
+            color: var(--amber);
+        }
+        .status-in-progress .status-dot {
+            background: var(--amber);
+            animation: pulse 2s infinite;
+        }
+        .status-completed {
+            background: var(--accent-dim);
+            color: var(--accent);
+        }
+        .status-completed .status-dot { background: var(--accent); }
+        .status-error {
+            background: rgba(255, 68, 102, 0.15);
+            color: var(--red);
+        }
+        .status-error .status-dot { background: var(--red); }
+
+        /* Resources panel */
+        .resources-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+        .resource-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+        }
+        .resource-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .resource-type {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+        }
+        .resource-name {
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .resource-url {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--text-secondary);
+            word-break: break-all;
+        }
+        .resource-url a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+        .resource-url a:hover {
+            text-decoration: underline;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 600px;
+            width: 90%;
+        }
+        .modal-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 24px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 14px;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 32px;
+        }
+
+        /* Logs panel */
+        .logs-container {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .log-entry {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            padding: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+        .log-time {
+            color: var(--text-dim);
+            margin-right: 12px;
+        }
+        .log-step {
+            color: var(--accent);
+            margin-right: 12px;
+        }
+        .log-status-success {
+            color: var(--accent);
+        }
+        .log-status-error {
+            color: var(--red);
+        }
+        .log-status-started {
+            color: var(--amber);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">Polsia<span>ES</span></div>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard.html" class="nav-link">📊 Panel</a>
+                <a href="/empresas.html" class="nav-link active">🏢 Empresas</a>
+                <a href="/tasks.html" class="nav-link">✓ Tareas</a>
+                <a href="/agents.html" class="nav-link">🤖 Agentes</a>
+                <a href="/mcp.html" class="nav-link">🔌 MCP</a>
+                <a href="/configuracion.html" class="nav-link">⚙️ Configuración</a>
+            </nav>
+        </aside>
+
+        <!-- Main content -->
+        <main class="main-content">
+            <div class="page-header">
+                <h1 class="page-title">Empresas</h1>
+                <p class="page-subtitle">Gestiona tus empresas y su infraestructura</p>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Mis Empresas</div>
+                    <button class="btn btn-primary" onclick="showCreateModal()">+ Crear Empresa</button>
+                </div>
+                <div class="company-list" id="companyList">
+                    <!-- Companies loaded here -->
+                </div>
+            </div>
+
+            <!-- Resources panel (shown when viewing a company) -->
+            <div id="resourcesPanel" style="display: none;"></div>
+        </main>
+    </div>
+
+    <!-- Create company modal -->
+    <div class="modal-overlay" id="createModal">
+        <div class="modal">
+            <h2 class="modal-title">Crear Nueva Empresa</h2>
+            <form id="createForm" onsubmit="createCompany(event)">
+                <div class="form-group">
+                    <label class="form-label">Nombre de la Empresa</label>
+                    <input type="text" class="form-input" id="companyName" required placeholder="Mi Empresa SaaS">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Slug (identificador único)</label>
+                    <input type="text" class="form-input" id="companySlug" required placeholder="mi-empresa" pattern="[a-z0-9\-]+">
+                    <small style="color: var(--text-dim); font-size: 12px;">Solo letras minúsculas, números y guiones</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Descripción</label>
+                    <textarea class="form-input" id="companyDescription" rows="3" placeholder="Plataforma SaaS para..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="hideCreateModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Crear</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        let token = localStorage.getItem('token');
+
+        if (!token) {
+            window.location.href = '/login.html';
+        }
+
+        // Load companies
+        async function loadCompanies() {
+            try {
+                const res = await fetch(`${API_BASE}/companies`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+
+                const list = document.getElementById('companyList');
+                if (data.companies && data.companies.length > 0) {
+                    list.innerHTML = data.companies.map(c => `
+                        <div class="company-item">
+                            <div class="company-info">
+                                <h3>${c.name}</h3>
+                                <div class="slug">${c.slug}</div>
+                                <span class="company-status status-${c.provisioning_status || 'not_started'}">
+                                    <span class="status-dot"></span>
+                                    ${getStatusText(c.provisioning_status || 'not_started')}
+                                </span>
+                            </div>
+                            <div style="display: flex; gap: 12px;">
+                                ${c.provisioning_status === 'not_started' || !c.provisioning_status ?
+                                    `<button class="btn btn-primary" onclick="provisionCompany(${c.id})">Provisionar</button>` :
+                                    `<button class="btn btn-secondary" onclick="viewResources(${c.id})">Ver Recursos</button>`
+                                }
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    list.innerHTML = '<p style="color: var(--text-dim);">No tienes empresas aún. ¡Crea tu primera empresa!</p>';
+                }
+            } catch (err) {
+                console.error('Error loading companies:', err);
+            }
+        }
+
+        function getStatusText(status) {
+            const labels = {
+                'not_started': 'Sin provisionar',
+                'in_progress': 'Provisionando...',
+                'completed': 'Activa',
+                'error': 'Error'
+            };
+            return labels[status] || status;
+        }
+
+        // Create company
+        async function createCompany(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('companyName').value;
+            const slug = document.getElementById('companySlug').value;
+            const description = document.getElementById('companyDescription').value;
+
+            try {
+                const res = await fetch(`${API_BASE}/companies`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name, slug, description, locale: 'es' })
+                });
+
+                const data = await res.json();
+
+                if (data.ok) {
+                    hideCreateModal();
+                    loadCompanies();
+                } else {
+                    alert(data.error || 'Error al crear empresa');
+                }
+            } catch (err) {
+                console.error('Error creating company:', err);
+                alert('Error al crear empresa');
+            }
+        }
+
+        // Provision company
+        async function provisionCompany(companyId) {
+            if (!confirm('¿Iniciar provisionamiento de infraestructura? Esto creará:\n\n• Repositorio GitHub\n• Base de datos PostgreSQL (Neon)\n• Servicio web (Render)\n• Almacenamiento R2')) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/companies/${companyId}/provision`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await res.json();
+
+                if (data.ok) {
+                    alert('Provisionamiento iniciado. El proceso tomará unos minutos.');
+                    loadCompanies();
+                    // Auto-refresh every 5 seconds while provisioning
+                    setTimeout(() => viewResources(companyId), 2000);
+                } else {
+                    alert(data.error || 'Error al iniciar provisionamiento');
+                }
+            } catch (err) {
+                console.error('Error provisioning:', err);
+                alert('Error al iniciar provisionamiento');
+            }
+        }
+
+        // View resources
+        async function viewResources(companyId) {
+            try {
+                const res = await fetch(`${API_BASE}/companies/${companyId}/resources/status`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+
+                const panel = document.getElementById('resourcesPanel');
+                panel.style.display = 'block';
+
+                panel.innerHTML = `
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">Recursos Provisionados</div>
+                            <span class="company-status status-${data.overall_status}">
+                                <span class="status-dot"></span>
+                                ${getStatusText(data.overall_status)}
+                            </span>
+                        </div>
+
+                        ${data.resources && data.resources.length > 0 ? `
+                            <div class="resources-grid">
+                                ${data.resources.map(r => `
+                                    <div class="resource-card">
+                                        <div class="resource-header">
+                                            <div class="resource-type">${getResourceIcon(r.resource_type)} ${getResourceTypeName(r.resource_type)}</div>
+                                            <span class="company-status status-${r.status}" style="font-size: 10px; padding: 2px 8px;">
+                                                <span class="status-dot" style="width: 4px; height: 4px;"></span>
+                                                ${r.status}
+                                            </span>
+                                        </div>
+                                        <div class="resource-name">${r.name}</div>
+                                        ${r.url ? `<div class="resource-url"><a href="${r.url}" target="_blank">${r.url}</a></div>` : ''}
+                                        ${r.error_message ? `<div style="color: var(--red); font-size: 12px; margin-top: 8px;">${r.error_message}</div>` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : '<p style="color: var(--text-dim);">No hay recursos aún.</p>'}
+
+                        ${data.logs && data.logs.length > 0 ? `
+                            <div class="logs-container">
+                                <div style="font-weight: 600; margin-bottom: 12px;">Registro de Provisionamiento</div>
+                                ${data.logs.reverse().map(log => `
+                                    <div class="log-entry">
+                                        <span class="log-time">${new Date(log.created_at).toLocaleTimeString('es')}</span>
+                                        <span class="log-step">[${log.step}]</span>
+                                        <span class="log-status-${log.status}">${log.message}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+
+                // Auto-refresh if still provisioning
+                if (data.provisioning_status === 'in_progress' || data.overall_status === 'provisioning') {
+                    setTimeout(() => viewResources(companyId), 5000);
+                }
+            } catch (err) {
+                console.error('Error loading resources:', err);
+            }
+        }
+
+        function getResourceTypeName(type) {
+            const names = {
+                'github_repo': 'GitHub Repo',
+                'database': 'Base de Datos',
+                'web_service': 'Servicio Web',
+                'storage_bucket': 'Almacenamiento'
+            };
+            return names[type] || type;
+        }
+
+        function getResourceIcon(type) {
+            const icons = {
+                'github_repo': '📦',
+                'database': '🗄️',
+                'web_service': '🌐',
+                'storage_bucket': '💾'
+            };
+            return icons[type] || '📌';
+        }
+
+        // Modal functions
+        function showCreateModal() {
+            document.getElementById('createModal').classList.add('active');
+        }
+
+        function hideCreateModal() {
+            document.getElementById('createModal').classList.remove('active');
+            document.getElementById('createForm').reset();
+        }
+
+        // Auto-generate slug from name
+        document.getElementById('companyName').addEventListener('input', (e) => {
+            const slug = e.target.value
+                .toLowerCase()
+                .replace(/[^a-z0-9\s\-]/g, '')
+                .replace(/\s+/g, '-');
+            document.getElementById('companySlug').value = slug;
+        });
+
+        // Close modal on overlay click
+        document.getElementById('createModal').addEventListener('click', (e) => {
+            if (e.target.id === 'createModal') {
+                hideCreateModal();
+            }
+        });
+
+        // Initial load
+        loadCompanies();
+    </script>
+</body>
+</html>
