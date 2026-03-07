@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Precios — Polsia ES</title>
+    <meta name="description" content="Planes transparentes y flexibles para automatizar tu negocio con agentes de IA. Desde gratis hasta Enterprise.">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://hyper88os.polsia.app/precios">
+    <meta property="og:title" content="Precios — Polsia ES">
+    <meta property="og:description" content="Planes transparentes y flexibles para automatizar tu negocio con agentes de IA.">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Precios — Polsia ES">
+    <meta name="twitter:description" content="Planes transparentes y flexibles para automatizar tu negocio con agentes de IA.">
+
+    <meta name="theme-color" content="#00e599">
+
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="/theme.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #111118;
+            --bg-card: #16161f;
+            --border: #1e1e2a;
+            --text-primary: #e8e8ed;
+            --text-secondary: #8888a0;
+            --text-dim: #55556a;
+            --accent: #00e599;
+            --accent-dim: #00e59920;
+            --amber: #ffb800;
+            --red: #ff4466;
+            --blue: #4488ff;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        .grid-bg {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image:
+                linear-gradient(var(--border) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 60px 60px;
+            opacity: 0.15;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Nav */
+        nav {
+            padding: 24px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+        }
+        .logo { font-weight: 700; font-size: 18px; letter-spacing: -0.5px; }
+        .logo span { color: var(--accent); }
+        .logo a { color: inherit; text-decoration: none; }
+        .nav-status {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px; color: var(--accent);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .nav-status::before {
+            content: ''; width: 6px; height: 6px;
+            background: var(--accent); border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        .nav-links { display: flex; align-items: center; gap: 16px; }
+        .nav-links a {
+            color: var(--text-secondary); text-decoration: none;
+            font-size: 14px; font-weight: 500; transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--text-primary); }
+        .theme-toggle {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 8px; padding: 6px 10px; cursor: pointer;
+            font-size: 16px; transition: all 0.2s; line-height: 1;
+        }
+        .theme-toggle:hover { border-color: var(--accent); }
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 10px 20px; border-radius: 6px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600; font-size: 14px; text-decoration: none;
+            transition: all 0.2s; border: none; cursor: pointer;
+        }
+        .btn-primary { background: var(--accent); color: #0a0a0f; }
+        .btn-primary:hover {
+            background: #00cc88; transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(0, 229, 153, 0.3);
+        }
+        .btn-secondary {
+            background: transparent; color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover { border-color: var(--text-dim); background: var(--bg-secondary); }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
+        }
+
+        /* Hero */
+        .hero {
+            padding: 80px 0 60px;
+            text-align: center;
+        }
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--accent);
+            margin-bottom: 24px;
+            background: var(--accent-dim);
+        }
+        .hero h1 {
+            font-size: clamp(32px, 5vw, 48px);
+            font-weight: 700;
+            line-height: 1.1;
+            letter-spacing: -1.5px;
+            margin-bottom: 16px;
+        }
+        .hero p {
+            font-size: 18px;
+            color: var(--text-secondary);
+            max-width: 560px;
+            margin: 0 auto 40px;
+            line-height: 1.6;
+        }
+
+        /* Pricing Grid */
+        .pricing-section {
+            margin-bottom: 80px;
+        }
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+        .pricing-card {
+            background: rgba(17, 17, 24, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px 24px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            transition: all 0.3s;
+        }
+        .pricing-card:hover {
+            border-color: var(--accent);
+            box-shadow: 0 8px 32px rgba(0, 229, 153, 0.15);
+            transform: translateY(-4px);
+        }
+        .pricing-card.featured {
+            border-color: var(--accent);
+            box-shadow: 0 8px 32px rgba(0, 229, 153, 0.2);
+        }
+        .pricing-card.featured::before {
+            content: 'POPULAR';
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            padding: 4px 8px;
+            background: var(--accent);
+            color: #0a0a0f;
+            border-radius: 4px;
+            font-weight: 700;
+        }
+        .pricing-name {
+            font-size: 14px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+        .pricing-price {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            line-height: 1;
+        }
+        .pricing-period {
+            font-size: 14px;
+            color: var(--text-dim);
+            margin-bottom: 24px;
+        }
+        .pricing-features {
+            list-style: none;
+            flex: 1;
+            margin-bottom: 24px;
+        }
+        .pricing-features li {
+            padding: 8px 0;
+            font-size: 14px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            line-height: 1.5;
+        }
+        .pricing-features li::before {
+            content: '✓';
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 14px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .pricing-features .feature-highlight {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .overages-note {
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 13px;
+            margin-bottom: 60px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* FAQ Section */
+        .faq-section {
+            margin-bottom: 80px;
+        }
+        .section-title {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+        .section-title h2 {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -1px;
+            margin-bottom: 12px;
+        }
+        .section-title p {
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+        .faq-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .faq-item {
+            background: rgba(17, 17, 24, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            transition: all 0.3s;
+        }
+        .faq-item:hover {
+            border-color: var(--accent);
+            box-shadow: 0 4px 20px rgba(0, 229, 153, 0.1);
+        }
+        .faq-item h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+        .faq-item p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        /* CTA */
+        .cta-section {
+            text-align: center;
+            padding: 60px 0;
+            border-top: 1px solid var(--border);
+            margin-bottom: 40px;
+        }
+        .cta-section h2 {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -1px;
+            margin-bottom: 12px;
+        }
+        .cta-section p {
+            color: var(--text-secondary);
+            margin-bottom: 28px;
+            font-size: 16px;
+        }
+
+        /* Footer */
+        footer {
+            padding: 32px 0;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+        footer span {
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+        footer .logo {
+            font-size: 14px;
+        }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+            .pricing-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 768px) {
+            .pricing-grid {
+                grid-template-columns: 1fr;
+            }
+            .faq-grid {
+                grid-template-columns: 1fr;
+            }
+            .nav-links {
+                gap: 8px;
+            }
+            .hero {
+                padding: 60px 0 40px;
+            }
+            footer {
+                flex-direction: column;
+                gap: 16px;
+                text-align: center;
+            }
+        }
+        @media (max-width: 480px) {
+            .nav-status {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="grid-bg"></div>
+
+    <div class="container">
+        <!-- Navigation -->
+        <nav>
+            <div class="logo"><a href="/">polsia<span>.es</span></a></div>
+            <div class="nav-status">sistema activo</div>
+            <div class="nav-links">
+                <a href="/#funciones">Funciones</a>
+                <a href="/precios">Precios</a>
+                <button class="theme-toggle" title="Cambiar tema">🌙</button>
+                <a href="/login" class="btn btn-secondary">Entrar</a>
+                <a href="/signup" class="btn btn-primary">Comenzar</a>
+            </div>
+        </nav>
+
+        <!-- Hero -->
+        <section class="hero">
+            <div class="hero-badge">
+                <span>●</span> Precios transparentes
+            </div>
+            <h1>Elige el plan perfecto<br>para tu negocio</h1>
+            <p>Comienza gratis y escala cuando lo necesites. Sin sorpresas, sin tarifas ocultas.</p>
+        </section>
+
+        <!-- Pricing Grid -->
+        <section class="pricing-section">
+            <div class="pricing-grid">
+                <!-- Free Plan -->
+                <div class="pricing-card">
+                    <div class="pricing-name">Gratis</div>
+                    <div class="pricing-price">$0</div>
+                    <div class="pricing-period">por siempre</div>
+                    <ul class="pricing-features">
+                        <li><span class="feature-highlight">100 API calls</span> diarios</li>
+                        <li><span class="feature-highlight">10 LLM calls</span> diarios</li>
+                        <li><span class="feature-highlight">1 empresa</span></li>
+                        <li>3 créditos de tareas</li>
+                        <li>Panel de control básico</li>
+                        <li>Soporte por email</li>
+                    </ul>
+                    <a href="/signup" class="btn btn-secondary" style="width:100%">Comenzar Gratis</a>
+                </div>
+
+                <!-- Starter Plan -->
+                <div class="pricing-card">
+                    <div class="pricing-name">Starter</div>
+                    <div class="pricing-price">$29</div>
+                    <div class="pricing-period">por mes</div>
+                    <ul class="pricing-features">
+                        <li><span class="feature-highlight">5,000 API calls</span> diarios</li>
+                        <li><span class="feature-highlight">500 LLM calls</span> diarios</li>
+                        <li><span class="feature-highlight">3 empresas</span></li>
+                        <li>25 créditos de tareas</li>
+                        <li>Panel de control avanzado</li>
+                        <li>Soporte prioritario</li>
+                        <li>Analítica básica</li>
+                    </ul>
+                    <a href="/signup" class="btn btn-secondary" style="width:100%">Elegir Starter</a>
+                </div>
+
+                <!-- Pro Plan (Featured) -->
+                <div class="pricing-card featured">
+                    <div class="pricing-name">Pro</div>
+                    <div class="pricing-price">$79</div>
+                    <div class="pricing-period">por mes</div>
+                    <ul class="pricing-features">
+                        <li><span class="feature-highlight">25,000 API calls</span> diarios</li>
+                        <li><span class="feature-highlight">2,500 LLM calls</span> diarios</li>
+                        <li><span class="feature-highlight">10 empresas</span></li>
+                        <li>100 créditos de tareas</li>
+                        <li>Panel de control completo</li>
+                        <li>Soporte prioritario 24/7</li>
+                        <li>Analítica avanzada</li>
+                        <li>Webhooks personalizados</li>
+                    </ul>
+                    <a href="/signup" class="btn btn-primary" style="width:100%">Elegir Pro</a>
+                </div>
+
+                <!-- Enterprise Plan -->
+                <div class="pricing-card">
+                    <div class="pricing-name">Enterprise</div>
+                    <div class="pricing-price">$199</div>
+                    <div class="pricing-period">por mes</div>
+                    <ul class="pricing-features">
+                        <li><span class="feature-highlight">100,000 API calls</span> diarios</li>
+                        <li><span class="feature-highlight">10,000 LLM calls</span> diarios</li>
+                        <li><span class="feature-highlight">Empresas ilimitadas</span></li>
+                        <li>500 créditos de tareas</li>
+                        <li>Soporte dedicado + SLA</li>
+                        <li>Analítica empresarial</li>
+                        <li>Integraciones personalizadas</li>
+                        <li>Gestión de cuenta dedicada</li>
+                    </ul>
+                    <a href="/signup" class="btn btn-secondary" style="width:100%">Elegir Enterprise</a>
+                </div>
+            </div>
+            <p class="overages-note">Excedentes: $0.01 por API call adicional · $0.05 por LLM call adicional</p>
+        </section>
+
+        <!-- FAQ Section -->
+        <section class="faq-section">
+            <div class="section-title">
+                <h2>Preguntas Frecuentes</h2>
+                <p>Todo lo que necesitas saber sobre nuestros planes</p>
+            </div>
+            <div class="faq-grid">
+                <div class="faq-item">
+                    <h3>¿Puedo cambiar de plan en cualquier momento?</h3>
+                    <p>Sí, puedes actualizar o degradar tu plan cuando quieras. Los cambios se aplican inmediatamente y se prorratean en tu próxima factura.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>¿Qué son los créditos de tareas?</h3>
+                    <p>Los créditos de tareas te permiten ejecutar trabajos de agentes bajo demanda. Cada tarea consume 1 crédito. Los créditos no utilizados no caducan.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>¿Qué pasa si excedo mis límites?</h3>
+                    <p>Tus servicios seguirán funcionando. Se te cobrará $0.01 por API call adicional y $0.05 por LLM call adicional. Puedes configurar límites en tu panel.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>¿Ofrecen descuentos por pago anual?</h3>
+                    <p>Sí, ahorra un 20% pagando anualmente. Contacta a nuestro equipo de ventas para planes Enterprise personalizados con descuentos adicionales.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>¿Puedo probar antes de pagar?</h3>
+                    <p>Absolutamente. El plan Gratis es completamente funcional y no caduca nunca. Actualiza solo cuando necesites más capacidad.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>¿Cuál es su política de reembolso?</h3>
+                    <p>Ofrecemos reembolso completo dentro de los primeros 14 días si no estás satisfecho. Sin preguntas, sin complicaciones.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA -->
+        <section class="cta-section">
+            <h2>¿Listo para empezar?</h2>
+            <p>Únete a 500+ empresas que ya automatizaron su negocio con Polsia ES</p>
+            <a href="/signup" class="btn btn-primary">Crear Cuenta Gratis →</a>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <div class="logo">polsia<span>.es</span></div>
+            <span>© 2026 Polsia ES. Todos los derechos reservados.</span>
+        </footer>
+    </div>
+
+    <!-- Polsia Analytics -->
+    <script>
+    (function() {
+        var slug = 'hyper88os';
+        if (!slug || slug === '__POLSIA_' + 'SLUG__') return;
+        var vid = localStorage.getItem('polsia_vid');
+        if (!vid) {
+            vid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0;
+                return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+            });
+            localStorage.setItem('polsia_vid', vid);
+        }
+        new Image().src = 'https://polsia.com/api/beacon/pixel?s=' + encodeURIComponent(slug) + '&v=' + encodeURIComponent(vid);
+    })();
+    </script>
+</body>
+</html>
