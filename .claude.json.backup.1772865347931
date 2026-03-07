@@ -7,7 +7,7 @@
   "userID": "fa2e5a297ce0c1a00a7b368f77f06a3b6ba09502cdad99c2a846a787b3c9fafa",
   "clientDataCache": {
     "data": null,
-    "timestamp": 1772657077466
+    "timestamp": 1772702068765
   },
   "projects": {
     "/tmp/polsia-workspaces/company-13264/agent-30/exec-180997/hyper88os": {
@@ -142,6 +142,44 @@
         "signup.html"
       ],
       "exampleFilesGeneratedAt": 1772697068174
+    },
+    "/opt/polsia/workspaces/company-13264/agent-30/exec-204568/hyper88os": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": false,
+      "projectOnboardingSeenCount": 0,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "hasClaudeMdExternalIncludesWarningShown": false,
+      "exampleFiles": [
+        "server.js",
+        "dashboard.html",
+        "index.html",
+        "package.json",
+        "login.html"
+      ],
+      "exampleFilesGeneratedAt": 1772700987466
+    },
+    "/opt/polsia/workspaces/company-13264/agent-30/exec-204842/hyper88os": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": false,
+      "projectOnboardingSeenCount": 0,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "hasClaudeMdExternalIncludesWarningShown": false,
+      "exampleFiles": [
+        "server.js",
+        "dashboard.html",
+        "i18n.js",
+        "index.html",
+        "login.html"
+      ],
+      "exampleFilesGeneratedAt": 1772702068327
     }
   }
 }
